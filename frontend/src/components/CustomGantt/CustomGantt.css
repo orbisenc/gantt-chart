@@ -1,0 +1,946 @@
+/* CustomGantt.css */
+
+/* .react-flow__renderer {
+  width: 0% !important;
+  height: 0% !important;
+  z-index: 100 !important;
+} */
+
+/* Ensure connection line is visible */
+/* .react-flow__connectionline {
+  z-index: 1000 !important;
+  pointer-events: none !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  overflow: visible !important;
+}
+
+.react-flow__connectionline svg {
+  z-index: 1000 !important;
+  pointer-events: none !important;
+  position: absolute !important;
+  overflow: visible !important;
+} */
+
+/* Make sure React Flow containers don't hide connection line */
+/* .react-flow__pane {
+  z-index: 1 !important;
+  //overflow: visible !important;
+}
+
+.react-flow__viewport {
+  z-index: 1 !important;
+  //overflow: visible !important;
+}
+
+.react-flow__container {
+  overflow: visible !important;
+} */
+
+/* Connection line animation */
+@keyframes dash {
+  to {
+    stroke-dashoffset: -10;
+  }
+}
+
+.custom-gantt {
+  height: 100%;
+  width: 100%;
+  font-family: 'Open Sans', Arial, Helvetica, sans-serif;
+  font-size: 14px;
+  line-height: 20px;
+  display: flex;
+  flex-direction: row;
+  border: 1px solid #e6e6e6;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #ffffff;
+  position: relative; /* 컨트롤 버튼 위치 지정을 위해 추가 */
+}
+
+/* 리사이저 스타일 */
+.gantt-resizer {
+  cursor: col-resize;
+  background-color: #e0e0e0;
+  transition: background-color 0.2s, box-shadow 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.gantt-resizer:hover {
+  background-color: #d0d0d0;
+}
+
+.gantt-resizer:active {
+  background-color: #c0c0c0;
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+}
+
+/* 컬럼 리사이저 스타일 */
+.column-resizer {
+  position: absolute;
+  right: -3px;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  cursor: col-resize;
+  background-color: transparent;
+  border-right: 2px solid transparent;
+  z-index: 1000;
+  transition: all 0.2s;
+  user-select: none;
+  pointer-events: auto;
+}
+
+.column-resizer:hover {
+  border-right: 2px solid #007acc !important;
+  background-color: rgba(0, 122, 204, 0.1) !important;
+}
+
+.column-resizer:active {
+  border-right: 2px solid #005a9e !important;
+  background-color: rgba(0, 122, 204, 0.3) !important;
+}
+
+/* 컨트롤 버튼 영역 */
+.gantt-controls {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1000;
+  display: flex;
+  gap: 10px;
+}
+
+/* 컨트롤 버튼 스타일 */
+.gantt-control-button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.gantt-control-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.gantt-control-button.primary {
+  background-color: #28a745;
+  color: white;
+}
+
+.gantt-control-button.primary:hover {
+  background-color: #218838;
+}
+
+.gantt-control-button.secondary {
+  background-color: #6c757d;
+  color: white;
+}
+
+.gantt-control-button.secondary:hover {
+  background-color: #5a6268;
+}
+
+.gantt-control-button.danger {
+  background-color: #dc3545;
+  color: white;
+}
+
+.gantt-control-button.danger:hover {
+  background-color: #c82333;
+}
+
+/* 왼쪽: Task Table 영역 */
+.gantt-task-table {
+  width: 400px;
+  min-width: 400px;
+  flex-shrink: 0;
+  border-right: 1px solid #e6e6e6;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  /* overflow: hidden; */ /* 스크롤 방지 제거 */
+}
+
+/* gantt-task-table에서 상하 스크롤바만 숨기기 */
+.gantt-task-table::-webkit-scrollbar:vertical {
+  display: none;
+}
+
+.gantt-task-table::-webkit-scrollbar:horizontal {
+  height: 16px; /* Make horizontal scrollbar thicker */
+}
+
+.gantt-task-table::-webkit-scrollbar-track:horizontal {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.gantt-task-table::-webkit-scrollbar-thumb:horizontal {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.gantt-task-table::-webkit-scrollbar-thumb:horizontal:hover {
+  background: #a8a8a8;
+}
+
+.gantt-task-table {
+  scrollbar-width: auto;  /* Firefox - make scrollbar thicker */
+  scrollbar-color: #c1c1c1 #f1f1f1;  /* Firefox */
+}
+
+.gantt-task-table-header {
+  background: #f2f3f7;
+  border-bottom: 1px solid #e6e6e6;
+  flex-shrink: 0;
+  overflow: visible; /* 스크롤 허용 */
+  /* width: 100%; */ /* 너비 제한 제거 */
+}
+
+.gantt-task-table-body {
+  flex: 1;
+  overflow: visible; /* 스크롤 허용 */
+  /* width: 100%; */ /* 너비 제한 제거 */
+}
+
+/* 오른쪽: Timeline 영역 */
+.gantt-timeline {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  /* overflow-x: scroll; */ /* 개별 스크롤 제거 */
+}
+
+/* gantt-timeline에서 상하 스크롤바만 보이기 */
+.gantt-timeline::-webkit-scrollbar:vertical {
+  width: 8px;
+}
+
+.gantt-timeline::-webkit-scrollbar:horizontal {
+  height: 16px; /* Make horizontal scrollbar thicker */
+}
+
+.gantt-timeline::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.gantt-timeline::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.gantt-timeline::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+.gantt-timeline {
+  scrollbar-width: auto;  /* Firefox - make scrollbar thicker */
+  scrollbar-color: #c1c1c1 #f1f1f1;  /* Firefox */
+}
+
+.gantt-timeline-header {
+  background: #f2f3f7;
+  /*border-bottom: 1px solid #e6e6e6;*/
+  flex-shrink: 0;
+  overflow: hidden; /* 모든 스크롤 비활성화 */
+  position: relative;
+}
+
+/* gantt-timeline-header에서 scrollbar 완전히 숨기기 */
+.gantt-timeline-header::-webkit-scrollbar {
+  display: none;
+}
+
+.gantt-timeline-header {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.gantt-timeline-body {
+  /* flex: 1; */ /* flex 제거 */
+  position: relative;
+  overflow: hidden; /* 스크롤 비활성화 */
+}
+
+/* 타임라인 콘텐츠 스타일 */
+.gantt-timeline-content {
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+  background: #ffffff;
+  height: 100%;
+}
+
+/* 상위 스케일 레벨 스타일 */
+.gantt-timeline-upper-level {
+  border-bottom: 1px solid #e6e6e6;
+}
+
+/* 기본 스케일 레벨 스타일 */
+.gantt-timeline-base-level {
+  border-top: 1px solid #e6e6e6;
+}
+
+/* 타임라인 셀 스타일 */
+.gantt-timeline-cell {
+  position: relative;
+  text-transform: none;  /* uppercase 제거 */
+  font-weight: 600;
+  color: #2c2f3c;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+  white-space: nowrap;  /* 텍스트 줄바꿈 방지 */
+  overflow: hidden;  /* 넘치는 텍스트 숨김 */
+  text-overflow: ellipsis;  /* 넘치는 텍스트에 ... 표시 */
+}
+
+/* 상위 스케일 스타일 */
+.gantt-timeline-upper-scale {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  color: #2c2f3c;
+  background-color: #f8f9fa;
+  border-right: 1px solid #e6e6e6;
+  border-bottom: 1px solid #e6e6e6;
+  z-index: 2;
+  white-space: nowrap;  /* 텍스트 줄바꿈 방지 */
+}
+
+.gantt-timeline-cell.weekend {
+  background: #f0f6fa !important;
+  color: #9fa1ae !important;
+}
+
+/* 마커 스타일 */
+.gantt-timeline-marker {
+  position: absolute;
+  border-left: 2px dashed #ff4444;
+  animation: gantt-marker-pulse 2s infinite;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.gantt-timeline-marker-label {
+  position: absolute;
+  top: 5px;
+  left: 3px;
+  background-color: #ff4444;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: bold;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  z-index: 11;
+}
+
+@keyframes gantt-marker-pulse {
+  0% { opacity: 0.7; }
+  50% { opacity: 1; }
+  100% { opacity: 0.7; }
+}
+
+/* 태스크 테이블 스타일 */
+.gantt-task-table {
+  height: 100%;
+}
+
+.gantt-task-row {
+  transition: background-color 0.2s ease;
+  position: relative;
+}
+
+/* 태스크 행의 border line을 테이블 높이에 맞게 조정 */
+.gantt-task-row::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background-color: #e6e6e6;
+  z-index: 1;
+}
+
+/* 헤더 행의 border line을 테이블 높이에 맞게 조정 */
+.gantt-table-header-row::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background-color: #e6e6e6;
+  z-index: 1;
+  top: 100%;
+}
+
+.gantt-task-row:hover {
+  background-color: #eaedf5;
+}
+
+.gantt-task-cell {
+  user-select: none;
+  flex-shrink: 0;
+  flex-grow: 0;
+  box-sizing: border-box;
+}
+
+.gantt-table-header-cell {
+  flex-shrink: 0;
+  flex-grow: 0;
+  box-sizing: border-box;
+}
+
+/* 트리 구조 시각화 */
+.gantt-task-row {
+  position: relative;
+}
+
+.gantt-task-row::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background-color: #e6e6e6;
+  z-index: 1;
+}
+
+.gantt-task-row[data-level="1"]::before {
+  left: 24px;
+}
+
+.gantt-task-row[data-level="2"]::before {
+  left: 48px;
+}
+
+.gantt-task-row[data-level="3"]::before {
+  left: 72px;
+}
+
+.gantt-task-row[data-level="4"]::before {
+  left: 96px;
+}
+
+.gantt-task-row[data-level="5"]::before {
+  left: 120px;
+}
+
+/* 트리 확장/축소 아이콘 스타일 */
+.gantt-tree-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: #666;
+  transition: all 0.2s ease;
+  font-size: 10px;
+  border-radius: 2px;
+  z-index: 2;
+  position: relative;
+}
+
+.gantt-tree-toggle:hover {
+  background-color: #e6e6e6;
+  color: #333;
+}
+
+.gantt-tree-toggle:before {
+  content: '▶';
+  display: block;
+  transition: transform 0.2s ease;
+}
+
+.gantt-tree-toggle.expanded:before {
+  transform: rotate(90deg);
+}
+
+/* 기존 확장 버튼 스타일 개선 */
+.gantt-expand-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: #666;
+  transition: all 0.2s ease;
+  font-size: 10px;
+  border-radius: 2px;
+  z-index: 2;
+  position: relative;
+}
+
+.gantt-expand-button:hover {
+  background-color: #e6e6e6;
+  color: #333;
+}
+
+/* 태스크 텍스트 컨테이너 */
+.gantt-task-text {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  z-index: 2;
+}
+
+.gantt-task-text-content {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 트리 구조 개선 */
+.gantt-task-row[data-level="0"] .gantt-task-text {
+  padding-left: 0;
+}
+
+.gantt-task-row[data-level="1"] .gantt-task-text {
+  padding-left: 24px;
+}
+
+.gantt-task-row[data-level="2"] .gantt-task-text {
+  padding-left: 48px;
+}
+
+.gantt-task-row[data-level="3"] .gantt-task-text {
+  padding-left: 72px;
+}
+
+.gantt-task-row[data-level="4"] .gantt-task-text {
+  padding-left: 96px;
+}
+
+.gantt-task-row[data-level="5"] .gantt-task-text {
+  padding-left: 120px;
+}
+
+.gantt-task-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.gantt-task-actions button {
+  transition: all 0.2s ease;
+}
+
+.gantt-task-actions button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* 차트 영역 스타일 */
+.gantt-chart {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.gantt-chart-content {
+  position: relative;
+}
+
+.gantt-grid-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.gantt-grid-line-vertical,
+.gantt-grid-line-horizontal {
+  pointer-events: none;
+}
+
+/* 수직 그리드 라인 강조 */
+.gantt-grid-line-vertical {
+  background-color: #d1d5db !important;
+  width: 2px !important;
+  z-index: 1 !important;
+}
+
+/* 수평 그리드 라인 강조 */
+.gantt-grid-line-horizontal {
+  background-color: #e6e6e6 !important;
+  height: 1px !important;
+  /*z-index: 1 !important;*/
+}
+
+/* gantt-timeline의 맨 마지막 부분에 그리드 라인 추가 */
+/* .gantt-timeline::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background-color: #e6e6e6;
+  z-index: 1;
+} */
+
+/* .gantt-timeline::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 2px;
+  background-color: #d1d5db;
+  z-index: 1;
+} */
+
+
+
+.gantt-weekend-background {
+  pointer-events: none;
+}
+
+.gantt-chart-marker {
+  position: absolute;
+  border-left: 2px dashed #ff4444;
+  animation: gantt-marker-pulse 2s infinite;
+  top: 0;
+  height: 100%;
+  pointer-events: none;
+  z-index: 15;
+}
+
+.gantt-chart-marker.today-marker {
+  border-left: 2px dashed #ff4444;
+  z-index: 20;
+  box-shadow: 0 0 8px 2px rgba(255, 68, 68, 0.15);
+}
+
+/* 태스크 바 스타일 */
+.gantt-task {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  position: relative;
+  border-radius: 4px;
+  z-index: 0;
+  /* 배경색 변화에 애니메이션 적용하지 않음 */
+  background-color: transparent;
+  /* 깜빡임 방지를 위한 추가 설정 */
+  will-change: transform, box-shadow;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
+.gantt-task:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+.gantt-task.selected {
+  box-shadow: 0 0 0 2px #1f6bd9, 0 2px 6px rgba(0,0,0,0.15);
+}
+
+/* 기본 태스크 색상 - JavaScript에서 덮어쓸 수 있도록 !important 제거 */
+.gantt-task.gantt-task {
+  background-color: #3983eb;
+}
+
+.gantt-task.gantt-milestone {
+  background-color: #ad44ab;
+}
+
+.gantt-task.gantt-summary {
+  background-color: #00ba94;
+}
+
+/* 진행률 바 스타일은 JavaScript에서 동적으로 설정됩니다 */
+
+.gantt-task-text {
+  pointer-events: none;
+}
+
+/* 드래그 앤 드롭 관련 스타일 제거 */
+
+/* 핸들 관련 스타일 제거 */
+
+/* 드래그 피드백 */
+.drag-feedback {
+  background: rgba(0, 0, 0, 0.05);
+  pointer-events: none;
+}
+
+.resize-feedback {
+  background: rgba(0, 123, 255, 0.1);
+  pointer-events: none;
+}
+
+/* 태스크 편집 모달 스타일 */
+.task-edit-modal-overlay {
+  backdrop-filter: blur(3px);
+  animation: modalFadeIn 0.3s ease;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.task-edit-modal {
+  animation: modalSlideIn 0.3s ease;
+}
+
+@keyframes modalSlideIn {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* 도움말 툴팁 */
+.gantt-help-tooltip {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  backgroundColor: #333;
+  color: white;
+  padding: 10px 15px;
+  borderRadius: 8px;
+  fontSize: 12px;
+  zIndex: 1000;
+  boxShadow: 0 2px 8px rgba(0,0,0,0.3);
+  animation: tooltipFadeIn 0.3s ease;
+  maxWidth: 250px;
+  lineHeight: 1.4;
+}
+
+.gantt-help-tooltip div {
+  margin: 2px 0;
+}
+
+.gantt-help-tooltip strong {
+  display: block;
+  marginBottom: 8px;
+  borderBottom: 1px solid #555;
+  paddingBottom: 4px;
+}
+
+/* 인터랙션 상태 표시 제거 */
+
+/* 태스크 바 호버 효과 */
+.gantt-task:hover .gantt-task-text {
+  text-shadow: 0 0 2px rgba(0,0,0,0.3);
+}
+
+/* 선택된 태스크 애니메이션 */
+.gantt-task.selected {
+  /* 깜빡임 방지를 위해 애니메이션 제거 */
+  box-shadow: 0 0 0 2px #1f6bd9, 0 2px 6px rgba(0,0,0,0.15) !important;
+}
+
+/* 선택된 태스크의 배경색은 JavaScript에서 동적으로 설정되므로 CSS에서 고정하지 않음 */
+
+/* 진행률 바 애니메이션 */
+.gantt-task-progress {
+  position: relative;
+  transition: width 0.3s ease;
+  border-radius: 3px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.gantt-task-progress::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    rgba(255,255,255,0.3) 50%, 
+    transparent 100%
+  );
+  animation: progressShimmer 2s infinite;
+}
+
+/* 진행률 바는 읽기 전용으로만 표시 */
+
+@keyframes progressShimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* 스크롤바 스타일 */
+.gantt-timeline::-webkit-scrollbar,
+.gantt-task-table::-webkit-scrollbar,
+.gantt-chart::-webkit-scrollbar {
+  width: 8px;
+  height: 16px; /* Make horizontal scrollbar thicker */
+}
+
+.gantt-timeline::-webkit-scrollbar-track,
+.gantt-task-table::-webkit-scrollbar-track,
+.gantt-chart::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.gantt-timeline::-webkit-scrollbar-thumb,
+.gantt-task-table::-webkit-scrollbar-thumb,
+.gantt-chart::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.gantt-timeline::-webkit-scrollbar-thumb:hover,
+.gantt-task-table::-webkit-scrollbar-thumb:hover,
+.gantt-chart::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+/* 태스크 타입별 기본 스타일 - JavaScript에서 덮어쓸 수 있도록 !important 제거 */
+.gantt-task.gantt-summary {
+  background: linear-gradient(135deg, #00ba94 0%, #00a085 100%);
+}
+
+.gantt-task.gantt-task {
+  background: linear-gradient(135deg, #3983eb 0%, #2c5aa0 100%);
+}
+
+.gantt-task.gantt-milestone {
+  background: linear-gradient(135deg, #ad44ab 0%, #9c3493 100%);
+}
+
+/* 반응형 스타일 */
+@media (max-width: 768px) {
+  .custom-gantt {
+    font-size: 12px;
+  }
+  
+  .gantt-table-header,
+  .gantt-table-body {
+    width: 250px;
+    min-width: 250px;
+  }
+  
+  .gantt-task-cell {
+    padding: 6px 3px;
+  }
+  
+  .gantt-timeline-cell {
+    font-size: 10px;
+  }
+  
+  .gantt-help-tooltip {
+    bottom: 10px;
+    right: 10px;
+    font-size: 10px;
+    padding: 8px 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .gantt-table-header,
+  .gantt-table-body {
+    width: 200px;
+    min-width: 200px;
+  }
+  
+  .gantt-task-actions button {
+    padding: 1px 4px;
+    font-size: 10px;
+  }
+  
+  .gantt-help-tooltip {
+    display: none;
+  }
+}
+
+/* 접근성 개선 */
+.gantt-task:focus {
+  outline: 2px solid #007bff;
+  outline-offset: 2px;
+}
+
+/* .gantt-task-row:focus {
+  outline: 2px solid #007bff;
+  outline-offset: -4px;
+} */
+
+/* 태스크 상태 표시 */
+.gantt-task[data-status="completed"] {
+  opacity: 0.7;
+}
+
+.gantt-task[data-status="delayed"] {
+  border-left: 4px solid #dc3545;
+}
+
+.gantt-task[data-status="critical"] {
+  border-left: 4px solid #fd7e14;
+}
+
+/* 로딩 상태 */
+.gantt-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  color: #6c757d;
+}
+
+.gantt-loading::after {
+  content: '';
+  width: 20px;
+  height: 20px;
+  border: 2px solid #e9ecef;
+  border-top: 2px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-left: 10px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+} 
