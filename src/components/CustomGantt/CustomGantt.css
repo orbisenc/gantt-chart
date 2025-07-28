@@ -737,7 +737,7 @@
 }
 
 /* 도움말 툴팁 */
-.gantt-help-tooltip {
+/* .gantt-help-tooltip {
   position: fixed;
   bottom: 20px;
   right: 20px;
@@ -762,7 +762,7 @@
   marginBottom: 8px;
   borderBottom: 1px solid #555;
   paddingBottom: 4px;
-}
+} */
 
 /* 인터랙션 상태 표시 제거 */
 
