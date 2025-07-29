@@ -1,7 +1,7 @@
 import React, { forwardRef, useEffect, useRef, useState } from 'react';
 import GanttTask from './GanttTask';
-import { calculateTaskPosition } from './utils';
-import useDragAndDrop from './hooks/useDragAndDrop';
+import { calculateTaskPosition } from '../../utils/utils';
+import useDragAndDrop from '../../utils/hooks/useDragAndDrop';
 import ConnectionOverlay from './ConnectionOverlay';
 
 const GanttChart = forwardRef(({ 
@@ -146,53 +146,57 @@ const GanttChart = forwardRef(({
           }}
         >
           {/* 수직 그리드 라인 */}
-          {timelineScale.map((_, index) => (
+          <div className="gantt-grid-line-vertical-container">
+            {timelineScale.map((_, index) => (
+              <div
+                key={`vline-${index}`}
+                className="gantt-grid-line-vertical"
+                style={{
+                  position: 'absolute',
+                  left: index * (cellWidth + cellGap)-2,
+                  top: 0,
+                  bottom: 0,
+                  width: '2px',
+                  backgroundColor: '#e6e6e6',
+                  zIndex: 1
+                }}
+              />
+            ))}
+          </div>
+
+          <div className="gantt-grid-line-horizontal-container">
+            {/* 수평 그리드 라인 */}
+            {tasks.map((_, index) => (
+              <div
+                key={`hline-${index}`}
+                className="gantt-grid-line-horizontal"
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  right: 0,
+                  top: index * rowHeight,
+                  height: '1px',
+                  backgroundColor: '#e6e6e6',
+                  zIndex: 0
+                }}
+              />
+            ))}
+            
+            {/* 하단 그리드 라인 */}
             <div
-              key={`vline-${index}`}
-              className="gantt-grid-line-vertical"
-              style={{
-                position: 'absolute',
-                left: index * (cellWidth + cellGap)-2,
-                top: 0,
-                bottom: 0,
-                width: '2px',
-                backgroundColor: '#e6e6e6',
-                zIndex: 1
-              }}
-            />
-          ))}
-          
-          {/* 수평 그리드 라인 */}
-          {tasks.map((_, index) => (
-            <div
-              key={`hline-${index}`}
+              key="hline-bottom"
               className="gantt-grid-line-horizontal"
               style={{
                 position: 'absolute',
                 left: 0,
                 right: 0,
-                top: index * rowHeight,
+                top: totalHeight,
                 height: '1px',
                 backgroundColor: '#e6e6e6',
-                zIndex: 0
+                zIndex: 1
               }}
             />
-          ))}
-
-          <div
-            key="hline-bottom"
-            className="gantt-grid-line-horizontal"
-            style={{
-              position: 'absolute',
-              left: 0,
-              right: 0,
-              top: totalHeight,
-              height: '1px',
-              backgroundColor: '#e6e6e6',
-              zIndex: 1
-            }}
-          />
-
+          </div>
         </div>
 
         {/* 주말 배경 */}

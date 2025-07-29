@@ -4,7 +4,7 @@ import GanttTaskTable from './GanttTaskTable';
 import GanttChart from './GanttChart';
 import TaskEditModal from './TaskEditModal';
 import ContextMenu from './ContextMenu';
-import useKeyboardNavigation from './hooks/useKeyboardNavigation';
+import useKeyboardNavigation from '../../utils/hooks/useKeyboardNavigation';
 import { 
   buildTaskHierarchy, 
   flattenTaskHierarchy, 
@@ -15,11 +15,11 @@ import {
   calculateProjectAndPhaseValues,
   isTaskFieldEditable,
   canAddChildTask
-} from './utils';
+} from '../../utils/utils';
 
-import { DEFAULT_CELL_WIDTH, DEFAULT_ROW_HEIGHT } from './types';
-import './CustomGantt.css';
-import { formatDate, generateUpperScales } from './utils';
+import { DEFAULT_CELL_WIDTH, DEFAULT_ROW_HEIGHT } from '../../utils/types';
+import '../../styles/CustomGantt.css';
+import { formatDate, generateUpperScales } from '../../utils/utils';
 
 const CustomGantt = forwardRef(({ 
   tasks = [], 
@@ -398,8 +398,10 @@ const CustomGantt = forwardRef(({
         
         // 동적 셀 넓이 계산
         if (timelineScale.length > 0) {
-          const minCellWidth = 60; // 최소 셀 넓이
-          const maxCellWidth = 200; // 최대 셀 넓이
+          const minCellWidth = zoomLevel === 'day' ? 30 : 60; // 최소 셀 넓이, days 줌 레벨일 때는 30px 제한
+          
+          // 줌 레벨에 따른 최대 셀 넓이 설정
+          const maxCellWidth = zoomLevel === 'day' ? 30 : 200; // days 줌 레벨일 때는 30px 제한
           const cellGap = 2;
           
           // 사용 가능한 너비에서 간격을 제외한 실제 셀 넓이 계산

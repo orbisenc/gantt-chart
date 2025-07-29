@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { formatDate, formatNumberWithCommas, generateTimelineScale, isTaskFieldEditable } from './utils';
-import { MaturityType, MaturityLabels, TaskType, TaskSubType, TaskSubTypeLabels } from './types';
-import { isTaskEditable } from './maturityUtils';
+import { formatDate, formatNumberWithCommas, generateTimelineScale, isTaskFieldEditable } from '../../utils/utils';
+import { MaturityType, MaturityLabels, TaskType, TaskSubType, TaskSubTypeLabels } from '../../utils/types';
+import { isTaskEditable } from '../../utils/maturityUtils';
 
 const TaskEditModal = ({ 
   task, 

@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
-import { getTaskTypeClass } from './utils';
-import { getTaskColorByMaturity, shouldShowDraftWarning, isTaskOverdue } from './maturityUtils';
-import { MaturityType, TaskSubType } from './types';
+import { getTaskTypeClass } from '../../utils/utils';
+import { getTaskColorByMaturity, shouldShowDraftWarning, isTaskOverdue } from '../../utils/maturityUtils';
+import { MaturityType, TaskSubType } from '../../utils/types';
 import { ReactFlow, Handle, ReactFlowProvider } from '@xyflow/react';
 
 
@@ -57,7 +57,7 @@ const GanttTask = ({
         width: 16, // 셀 높이에 맞춤
         height: 16,
         left: x + cellWidth - Math.sqrt(8*8*2) + 1,
-        top: y + 4,
+        top: y + 3,
         cursor: 'pointer',
         display: 'block',
         minWidth: 0,

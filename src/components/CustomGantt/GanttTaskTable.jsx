@@ -1,6 +1,6 @@
 import React, { forwardRef, useEffect, useRef, useState, useCallback } from 'react';
-import { formatDate, formatNumberWithCommas } from './utils';
-import { MaturityType, MaturityLabels, TaskTypeLabels, TaskSubType } from './types';
+import { formatDate, formatNumberWithCommas } from '../../utils/utils';
+import { MaturityType, MaturityLabels, TaskTypeLabels, TaskSubType } from '../../utils/types';
 
 const GanttTaskTable = forwardRef(({ 
   tasks = [], 

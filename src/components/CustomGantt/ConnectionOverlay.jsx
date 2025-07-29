@@ -1,7 +1,7 @@
 import React, { useMemo, useCallback, useState } from 'react';
 import ConnectionNode from './ConnectionNode';
 import CustomConnectionLine from './CustomConnectionLine';
-import { calculateTaskPosition } from './utils';
+import { calculateTaskPosition } from '../../utils/utils';
 import { 
   ReactFlow, 
   ReactFlowProvider, 
@@ -14,7 +14,7 @@ import {
   BackgroundVariant 
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import './CustomGantt.css';
+import '../../styles/CustomGantt.css';
 
 const ConnectionOverlay = ({ 
   tasks, 

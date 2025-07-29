@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { canAddChildTask } from './utils';
+import { canAddChildTask } from '../../utils/utils';
 
 const ContextMenu = ({ 
   isOpen, 
