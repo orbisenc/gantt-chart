@@ -336,9 +336,11 @@ export function generateTimelineScale(start, end, unit) {
       extendedEnd.setDate(extendedEnd.getDate() + 7); // 1주 후
       break;
     case 'day':
-      // Don't extend the timeline for day view to show exact project dates
+      // Add one day buffer before and after for day view
       extendedStart = new Date(scaleStart);
+      extendedStart.setDate(extendedStart.getDate() - 1); // 1일 전
       extendedEnd = new Date(scaleEnd);
+      extendedEnd.setDate(extendedEnd.getDate() + 1); // 1일 후
       break;
     default:
       extendedStart = new Date(scaleStart.getFullYear(), scaleStart.getMonth() - 1, 1);
@@ -376,19 +378,15 @@ export function generateTimelineScale(start, end, unit) {
         break;
 
       case 'week':
-        // 주 단위로 표시 - 연속적인 주차 번호 계산
-        // 연도 시작부터의 주차 번호 계산
-        const yearStart = new Date(year, 0, 1);
-        const daysSinceYearStart = Math.floor((current - yearStart) / (24 * 60 * 60 * 1000));
-        const weeksSinceYearStart = Math.floor(daysSinceYearStart / 7);
+        // 주 단위로 표시 - ISO 8601 주차 번호 계산
+        const isoWeek = getISOWeek(current);
         
         // 다음 주의 시작일 (7일 후)
         nextDate = new Date(current);
         nextDate.setDate(nextDate.getDate() + 7);
         
-        // 연속적인 주차 번호
-        const weekNum = weeksSinceYearStart + 1;
-        label = `W${weekNum}`;
+        // ISO 주차 번호
+        label = `W${isoWeek.week}`;
         break;
 
       case 'day':
@@ -433,6 +431,33 @@ function getWeeksInMonth(year, month) {
   const hasPartialLastWeek = remainingDays % 7 > 0;
   
   return 1 + fullWeeks + (hasPartialLastWeek ? 1 : 0);
+}
+
+/**
+ * ISO 8601 주차 번호를 계산합니다 (월요일 시작, 1-52주).
+ * @param {Date} date - 날짜
+ * @returns {Object} { year: number, week: number } - 해당 날짜가 속한 연도와 주차
+ */
+function getISOWeek(date) {
+  const target = new Date(date);
+  const dayOfWeek = (target.getDay() + 6) % 7; // 월요일을 0으로 조정
+  
+  // 해당 주의 목요일을 찾음 (ISO 8601 규칙)
+  const thursday = new Date(target);
+  thursday.setDate(target.getDate() - dayOfWeek + 3);
+  
+  // 목요일이 속한 연도가 주차의 연도
+  const year = thursday.getFullYear();
+  
+  // 해당 연도의 첫 번째 목요일을 찾음
+  const firstThursday = new Date(year, 0, 4);
+  const firstThursdayDay = (firstThursday.getDay() + 6) % 7;
+  firstThursday.setDate(4 - firstThursdayDay);
+  
+  // 첫 번째 목요일부터 현재 목요일까지의 주차 계산
+  const weekNumber = Math.floor((thursday - firstThursday) / (7 * 24 * 60 * 60 * 1000)) + 1;
+  
+  return { year, week: weekNumber };
 }
 
 /**
@@ -618,117 +643,90 @@ export function generateUpperScales(scale, unit) {
       const dayMonthScales = [];
       const dayWeekScales = [];
       
-      // 각 단위별 일수 계산을 위한 맵
+      // 각 단위별 실제 timeline scale에서의 일수 계산을 위한 맵
       const yearDayCounts = new Map();
       const quarterDayCounts = new Map();
       const monthDayCounts = new Map();
       const weekDayCounts = new Map();
       
-      // 먼저 각 단위별 일수를 계산
-      scale.forEach((item) => {
-        const year = item.date.getFullYear();
-        const quarter = Math.floor(item.date.getMonth() / 3) + 1;
-        const month = item.date.getMonth();
-        
-        // 연도 시작부터의 주차 번호 계산 (연속적)
-        const yearStart = new Date(year, 0, 1);
-        const daysSinceYearStart = Math.floor((item.date - yearStart) / (24 * 60 * 60 * 1000));
-        const weeksSinceYearStart = Math.floor(daysSinceYearStart / 7);
-        const week = weeksSinceYearStart + 1;
-        
-        const yearKey = `year-${year}`;
-        const quarterKey = `quarter-${year}-${quarter}`;
-        const monthKey = `month-${year}-${month}`;
-        const weekKey = `week-${year}-${week}`;
-        
-        // 연도별 일수 계산
-        if (!yearDayCounts.has(yearKey)) {
-          const isLeapYear = (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
-          yearDayCounts.set(yearKey, isLeapYear ? 366 : 365);
-        }
-        
-        // 분기별 일수 계산
-        if (!quarterDayCounts.has(quarterKey)) {
-          let totalDays = 0;
-          const startMonth = (quarter - 1) * 3;
-          for (let m = startMonth; m < startMonth + 3; m++) {
-            totalDays += new Date(year, m + 1, 0).getDate();
-          }
-          quarterDayCounts.set(quarterKey, totalDays);
-        }
-        
-        // 월별 일수 계산
-        if (!monthDayCounts.has(monthKey)) {
-          monthDayCounts.set(monthKey, new Date(year, month + 1, 0).getDate());
-        }
-        
-        // 주별 일수 계산 (7일 고정)
-        if (!weekDayCounts.has(weekKey)) {
-          weekDayCounts.set(weekKey, 7);
-        }
-      });
-      
-      // 이제 실제 스케일 생성
+      // 실제 timeline scale에서 각 단위별 일수를 계산
       scale.forEach((item, index) => {
         const year = item.date.getFullYear();
         const quarter = Math.floor(item.date.getMonth() / 3) + 1;
         const month = item.date.getMonth();
         
-        // 연도 시작부터의 주차 번호 계산 (연속적)
-        const yearStart = new Date(year, 0, 1);
-        const daysSinceYearStart = Math.floor((item.date - yearStart) / (24 * 60 * 60 * 1000));
-        const weeksSinceYearStart = Math.floor(daysSinceYearStart / 7);
-        const week = weeksSinceYearStart + 1;
+        // ISO 8601 주차 번호 계산
+        const isoWeek = getISOWeek(item.date);
+        const week = isoWeek.week;
+        const weekYear = isoWeek.year; // 주차가 속한 연도 (12월 말이 다음해 1주일 수 있음)
         
         const yearKey = `year-${year}`;
         const quarterKey = `quarter-${year}-${quarter}`;
         const monthKey = `month-${year}-${month}`;
-        const weekKey = `week-${year}-${week}`;
+        const weekKey = `week-${weekYear}-${week}`;
         
-        // 연도 스케일
-        if (!processedLabels.has(yearKey)) {
-          dayYearScales.push({
-            label: year.toString(),
-            startIndex: index,
-            span: yearDayCounts.get(yearKey),
-            level: 0
-          });
-          processedLabels.add(yearKey);
+        // 실제 timeline에서 각 단위별 일수 카운트 (startIndex 정보도 저장)
+        if (!yearDayCounts.has(yearKey)) {
+          yearDayCounts.set(yearKey, { count: 0, startIndex: index });
         }
+        yearDayCounts.get(yearKey).count++;
         
-        // 분기 스케일
-        if (!processedLabels.has(quarterKey)) {
-          dayQuarterScales.push({
-            label: `Q${quarter}`,
-            startIndex: index,
-            span: quarterDayCounts.get(quarterKey),
-            level: 1
-          });
-          processedLabels.add(quarterKey);
+        if (!quarterDayCounts.has(quarterKey)) {
+          quarterDayCounts.set(quarterKey, { count: 0, startIndex: index, quarter: quarter });
         }
+        quarterDayCounts.get(quarterKey).count++;
         
-        // 월 스케일
-        if (!processedLabels.has(monthKey)) {
-          const monthNames = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
-          dayMonthScales.push({
-            label: monthNames[month],
-            startIndex: index,
-            span: monthDayCounts.get(monthKey),
-            level: 2
-          });
-          processedLabels.add(monthKey);
+        if (!monthDayCounts.has(monthKey)) {
+          monthDayCounts.set(monthKey, { count: 0, startIndex: index, month: month });
         }
+        monthDayCounts.get(monthKey).count++;
         
-        // 주 스케일
-        if (!processedLabels.has(weekKey)) {
-          dayWeekScales.push({
-            label: `W${week}`,
-            startIndex: index,
-            span: weekDayCounts.get(weekKey),
-            level: 3
-          });
-          processedLabels.add(weekKey);
+        if (!weekDayCounts.has(weekKey)) {
+          weekDayCounts.set(weekKey, { count: 0, startIndex: index, week: week, weekYear: weekYear });
         }
+        weekDayCounts.get(weekKey).count++;
+      });
+      
+      // 연도 스케일 생성
+      yearDayCounts.forEach((data, yearKey) => {
+        const year = yearKey.split('-')[1];
+        dayYearScales.push({
+          label: year,
+          startIndex: data.startIndex,
+          span: data.count,
+          level: 0
+        });
+      });
+      
+      // 분기 스케일 생성
+      quarterDayCounts.forEach((data, quarterKey) => {
+        dayQuarterScales.push({
+          label: `Q${data.quarter}`,
+          startIndex: data.startIndex,
+          span: data.count,
+          level: 1
+        });
+      });
+      
+      // 월 스케일 생성
+      monthDayCounts.forEach((data, monthKey) => {
+        const monthNames = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
+        dayMonthScales.push({
+          label: monthNames[data.month],
+          startIndex: data.startIndex,
+          span: data.count,
+          level: 2
+        });
+      });
+      
+      // 주 스케일 생성
+      weekDayCounts.forEach((data, weekKey) => {
+        dayWeekScales.push({
+          label: `W${data.week}`,
+          startIndex: data.startIndex,
+          span: data.count,
+          level: 3
+        });
       });
       
       upperScales.push(...dayYearScales, ...dayQuarterScales, ...dayMonthScales, ...dayWeekScales);

@@ -1,5 +1,5 @@
 import React, { forwardRef, useEffect, useRef, useState } from 'react';
-import { formatDate, generateUpperScales } from './utils';
+import { formatDate, generateUpperScales } from '../../utils/utils';
 
 const GanttTimeline = forwardRef(({ 
   scale = [], 

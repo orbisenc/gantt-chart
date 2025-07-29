@@ -1,6 +1,6 @@
 import React from 'react';
 import { Handle } from '@xyflow/react';
-import { TaskSubType } from './types';
+import { TaskSubType } from '../../utils/types';
 
 /**
  * ConnectionNode component for ReactFlow
@@ -63,7 +63,7 @@ const ConnectionNode = ({ data, isConnectable }) => {
             }}
           />
         </>
-      ) : (
+      ) : (  
         /* Left and Right Handles for regular tasks */
         <>
           <Handle 

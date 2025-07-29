@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { CustomGantt } from "../components/CustomGantt";
-import { MaturityType, TaskSubType } from "../components/CustomGantt/types";
-import { updateTaskMaturityWithCascade, isTaskOverdue } from "../components/CustomGantt/maturityUtils";
-import { calculateProjectAndPhaseValues } from "../components/CustomGantt/utils";
+import { MaturityType, TaskSubType } from "../utils/types";
+import { updateTaskMaturityWithCascade, isTaskOverdue } from "../utils/maturityUtils";
+import { calculateProjectAndPhaseValues } from "../utils/utils";
 import { 
   loadTasksFromLocal, 
   saveTasksToLocal, 
@@ -11,7 +11,6 @@ import {
   exportTasksToFile,
   importTasksFromFile
 } from "../utils/localStorage";
-import api from "../api";
 
 const Schedule = () => {
   const [zoomLevel, setZoomLevel] = useState("month");
@@ -458,7 +457,7 @@ const Schedule = () => {
     let tasksWithUpdatedMaturity = updateMaturityBasedOnProgress(tasksWithMaturity);
 
     // 최상위 태스크의 날짜를 하위 태스크에 맞춰 자동 조정 (calculateProjectAndPhaseValues 사용)
-    import('../components/CustomGantt/utils').then(utils => {
+    import('../utils/utils').then(utils => {
       const adjustedTasks = utils.calculateProjectAndPhaseValues(tasksWithUpdatedMaturity);
       setTasks(adjustedTasks);
       
@@ -1434,7 +1433,7 @@ const Schedule = () => {
           scales={scales} 
           markers={markers}
           cellWidth={getCellWidthForZoom(zoomLevel)}
-          rowHeight={getRowHeightForZoom(zoomLevel)}
+          rowHeight={32} //{getRowHeightForZoom(zoomLevel)}
           onTaskUpdate={handleTaskUpdate}
           onTaskSelect={handleTaskSelect}
           onTaskAdd={handleTaskAdd}

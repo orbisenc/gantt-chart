@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { MaturityType, MaturityLabels } from './types';
-import { canChangeMaturity } from './maturityUtils';
+import { MaturityType, MaturityLabels } from '../../utils/types';
+import { canChangeMaturity } from '../../utils/maturityUtils';
 
 const MaturityDropdown = ({ 
   value, 
