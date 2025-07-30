@@ -87,7 +87,7 @@ const Schedule = () => {
       // 프로젝트 전체
       {
         id: 1,
-        text: "대국상부승강장건축공사",
+        text: "영월 봉래산 전망시설 조성사업 건축공사",
         start: new Date(2025, 0, 1),
         end: new Date(2025, 11, 31),
         duration: 365,
@@ -99,10 +99,10 @@ const Schedule = () => {
         maturity: MaturityType.DRAFT, // 초기 상태 (진행중으로 자동 변경될 예정)
       },
       
-      // 1단계: 준비 및 설계
+      // 건축 공사
       {
         id: 10,
-        text: "1단계: 준비 및 설계",
+        text: "건축공사",
         start: new Date(2025, 0, 1),
         end: new Date(2025, 2, 31),
         duration: 90,
@@ -115,7 +115,7 @@ const Schedule = () => {
       },
       {
         id: 11,
-        text: "현장조사 및 측량",
+        text: "공통 가설공사",
         start: new Date(2024, 11, 1), // 과거 날짜로 설정 (테스트용)
         end: new Date(2024, 11, 15), // 과거 날짜로 설정 (테스트용)
         duration: 15,
@@ -129,7 +129,7 @@ const Schedule = () => {
       },
       {
         id: 12,
-        text: "실시설계 및 도면작성",
+        text: "토 및 지정공사",
         start: new Date(2025, 0, 16),
         end: new Date(2025, 1, 28),
         duration: 44,
@@ -143,8 +143,8 @@ const Schedule = () => {
       },
       {
         id: 13,
-        text: "인허가 및 승인",
-        start: new Date(2024, 11, 20), // 과거 시작일 (테스트용)
+        text: "철근콘크리트공사",
+        start: new Date(2025, 2, 1), // 과거 시작일 (테스트용)
         end: new Date(2025, 2, 31),
         duration: 45,
         progress: 25, // 테스트용 진척도 설정
@@ -159,7 +159,7 @@ const Schedule = () => {
       // 2단계: 기초공사
       {
         id: 20,
-        text: "2단계: 기초공사",
+        text: "타워기초공사",
         start: new Date(2025, 2, 1),
         end: new Date(2025, 4, 31),
         duration: 90,
@@ -172,7 +172,7 @@ const Schedule = () => {
       },
       {
         id: 21,
-        text: "가설공사 및 현장정리",
+        text: "토공",
         start: new Date(2025, 2, 1),
         end: new Date(2025, 2, 31),
         duration: 31,
@@ -186,7 +186,7 @@ const Schedule = () => {
       },
       {
         id: 22,
-        text: "토공사 및 굴착",
+        text: "기초공사사",
         start: new Date(2025, 3, 1),
         end: new Date(2025, 3, 20),
         duration: 20,
@@ -200,7 +200,7 @@ const Schedule = () => {
       },
       {
         id: 23,
-        text: "기초철근 및 거푸집",
+        text: "기초공사 관급자재",
         start: new Date(2025, 3, 21),
         end: new Date(2025, 4, 10),
         duration: 20,
@@ -212,25 +212,11 @@ const Schedule = () => {
         subType: TaskSubType.NORMAL,
         maturity: MaturityType.PLANNED, // 계획 상태로 설정 (테스트용)
       },
-      {
-        id: 24,
-        text: "기초콘크리트 타설",
-        start: new Date(2025, 4, 11),
-        end: new Date(2025, 4, 31),
-        duration: 21,
-        progress: 30, // 진척도는 30%이지만 성숙도는 설정하지 않음 (테스트용)
-        price: formatNumberWithCommas(640000000),
-        price_ratio: 5,
-        parent: 20,
-        type: "task",
-        subType: TaskSubType.NORMAL,
-        // maturity: MaturityType.DRAFT, // 명시적으로 설정하지 않음 (자동 업데이트 테스트)
-      },
       
       // 3단계: 골조공사
       {
         id: 30,
-        text: "3단계: 골조공사",
+        text: "체험관전망대",
         start: new Date(2025, 4, 15),
         end: new Date(2025, 7, 31),
         duration: 108,
@@ -243,7 +229,7 @@ const Schedule = () => {
       },
       {
         id: 31,
-        text: "지하층 골조공사",
+        text: "포장공사",
         start: new Date(2025, 4, 15),
         end: new Date(2025, 5, 30),
         duration: 46,
@@ -256,7 +242,7 @@ const Schedule = () => {
       },
       {
         id: 32,
-        text: "지상층 골조공사",
+        text: "배수공사",
         start: new Date(2025, 5, 15),
         end: new Date(2025, 7, 15),
         duration: 61,
@@ -269,7 +255,7 @@ const Schedule = () => {
       },
       {
         id: 33,
-        text: "지붕 및 옥상공사",
+        text: "데크공사",
         start: new Date(2025, 7, 1),
         end: new Date(2025, 7, 31),
         duration: 31,
@@ -284,7 +270,7 @@ const Schedule = () => {
       // 4단계: 마감공사
       {
         id: 40,
-        text: "4단계: 마감공사",
+        text: "체험관 내부공사",
         start: new Date(2025, 7, 1),
         end: new Date(2025, 10, 31),
         duration: 122,
@@ -296,7 +282,7 @@ const Schedule = () => {
       },
       {
         id: 41,
-        text: "외부마감공사",
+        text: "철근콘크리트공사",
         start: new Date(2025, 7, 1),
         end: new Date(2025, 8, 31),
         duration: 62,
@@ -309,7 +295,7 @@ const Schedule = () => {
       },
       {
         id: 42,
-        text: "내부마감공사",
+        text: "조적공사사",
         start: new Date(2025, 8, 1),
         end: new Date(2025, 9, 30),
         duration: 61,
@@ -322,7 +308,7 @@ const Schedule = () => {
       },
       {
         id: 43,
-        text: "설비공사",
+        text: "타일공사",
         start: new Date(2025, 9, 1),
         end: new Date(2025, 10, 31),
         duration: 61,
@@ -337,7 +323,7 @@ const Schedule = () => {
       // 5단계: 완료 및 검사
       {
         id: 50,
-        text: "5단계: 완료 및 검사",
+        text: "기계설비공사",
         start: new Date(2025, 10, 1),
         end: new Date(2025, 11, 31),
         duration: 61,
@@ -347,36 +333,54 @@ const Schedule = () => {
         parent: 1,
         type: "phase",
       },
+
       {
-        id: 51,
-        text: "시설물 검사",
+        id: 60,
+        text: "품질시험비",
         start: new Date(2025, 10, 1),
         end: new Date(2025, 10, 31),
         duration: 31,
         progress: 0,
         price: formatNumberWithCommas(640000000),
         price_ratio: 5,
-        parent: 50,
+        parent: 1,
         type: "task",
         subType: TaskSubType.NORMAL,
       },
+
       {
-        id: 52,
-        text: "최종 정리 및 인계",
+        id: 70,
+        text: "안전관리비",
         start: new Date(2025, 11, 1),
         end: new Date(2025, 11, 31),
         duration: 31,
         progress: 0,
         price: formatNumberWithCommas(640000000),
         price_ratio: 5,
-        parent: 50,
+        parent: 1,
         type: "task",
         subType: TaskSubType.NORMAL,
       },
+
+      {
+        id: 80,
+        text: "도급자설치관급자재",
+        start: new Date(2025, 8, 1),
+        end: new Date(2025, 8, 30),
+        duration: 30,
+        progress: 0,
+        price: formatNumberWithCommas(640000000),
+        price_ratio: 5,
+        parent: 1,
+        type: "task",
+        subType: TaskSubType.NORMAL,
+      },
+
+
       
       // 마일스톤 예시들
       {
-        id: 60,
+        id: 90,
         text: "설계 완료",
         start: new Date(2025, 2, 31),
         end: new Date(2025, 2, 31),
@@ -680,7 +684,6 @@ const Schedule = () => {
 
   // 줌 레벨 변경 핸들러
   const handleZoomChange = (newZoomLevel) => {
-    // console.log("Zoom Level", newZoomLevel);
     setZoomLevel(newZoomLevel);
   };
 
