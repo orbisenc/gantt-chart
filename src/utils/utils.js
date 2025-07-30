@@ -170,62 +170,167 @@ export const calculateTaskPosition = (task, timelineScale, cellWidth = 100, cell
   
   const taskStart = new Date(task.start);
   const taskEnd = new Date(task.end);
+
+  // For "day" zoom level, use grid snapping to align with days
+  if (timeUnit === 'day') {
+    console.log("calculatePositionWithGridSnapping called");
+    return calculatePositionWithGridSnapping(task, timelineScale, cellWidth, cellGap);
+  }
   
-  // 태스크 시작 위치 찾기
+  // For higher zoom levels (week, month, quarter, year), use proportional scaling
+  return calculatePositionWithScaling(task, timelineScale, cellWidth, cellGap, timeUnit);
+};
+
+/**
+ * Grid-snapping positioning for day-level zoom (simplified approach)
+ */
+const calculatePositionWithGridSnapping = (task, timelineScale, cellWidth, cellGap) => {
+  const taskStart = new Date(task.start);
+  const taskEnd = new Date(task.end);
+  
+  // Find the timeline start date for reference
+  const timelineStartDate = new Date(timelineScale[0].date);
+  
+  // Calculate days from timeline start to task start/end
+  const taskStartDays = Math.floor((taskStart.getTime() - timelineStartDate.getTime()) / (24 * 60 * 60 * 1000));
+  const taskEndDays = Math.floor((taskEnd.getTime() - timelineStartDate.getTime()) / (24 * 60 * 60 * 1000));
+  
+  // For day zoom, each timeline scale item represents one day
+  // Find exact indices by matching dates
   let startIndex = -1;
   let endIndex = -1;
   
   for (let i = 0; i < timelineScale.length; i++) {
     const scaleDate = new Date(timelineScale[i].date);
-    const nextScaleDate = i < timelineScale.length - 1 ? new Date(timelineScale[i + 1].date) : null;
+    const scaleDays = Math.floor((scaleDate.getTime() - timelineStartDate.getTime()) / (24 * 60 * 60 * 1000));
     
-    // 태스크 시작일이 속하는 스케일 찾기
+    if (scaleDays === taskStartDays && startIndex === -1) {
+      startIndex = i;
+    }
+    
+    if (scaleDays === taskEndDays && endIndex === -1) {
+      endIndex = i + 1; // End after this day to include it fully
+    }
+  }
+  
+  // Fallback if exact match not found
+  if (startIndex === -1) {
+    startIndex = Math.max(0, Math.min(taskStartDays, timelineScale.length - 1));
+  }
+  if (endIndex === -1) {
+    endIndex = Math.max(startIndex + 1, Math.min(taskEndDays + 1, timelineScale.length));
+  }
+  
+  console.log("task:", task);
+  console.log(" - startIndex", startIndex);
+  console.log(" - endIndex", endIndex);
+
+  // Calculate position with grid snapping
+  const startX = startIndex * (cellWidth + cellGap);
+  const endX = endIndex * (cellWidth + cellGap) - cellGap;
+  const width = Math.max(endX - startX, cellWidth * 0.1);
+  
+  return { x: startX, width };
+};
+
+/**
+ * Proportional scaling positioning for higher zoom levels
+ */
+const calculatePositionWithScaling = (task, timelineScale, cellWidth, cellGap, timeUnit) => {
+  const taskStart = new Date(task.start);
+  const taskEnd = new Date(task.end);
+  
+  // Find the closest timeline scale index for the task start date
+  let startIndex = -1;
+  let endIndex = -1;
+  
+  for (let i = 0; i < timelineScale.length; i++) {
+    const scaleDate = new Date(timelineScale[i].date);
+    
+    // Find the scale item that contains or is closest to the task start
     if (startIndex === -1) {
-      if (nextScaleDate) {
+      if (i === timelineScale.length - 1) {
+        // Last item, use it
+        startIndex = i;
+      } else {
+        const nextScaleDate = new Date(timelineScale[i + 1].date);
         if (taskStart >= scaleDate && taskStart < nextScaleDate) {
           startIndex = i;
         }
-      } else {
-        // 마지막 스케일인 경우
-        if (taskStart >= scaleDate) {
-          startIndex = i;
-        }
       }
     }
     
-    // 태스크 종료일이 속하는 스케일 찾기
-    if (nextScaleDate) {
-      if (taskEnd > scaleDate && taskEnd <= nextScaleDate) {
-        endIndex = i + 1;
-      }
-    } else {
-      // 마지막 스케일인 경우
-      if (taskEnd > scaleDate) {
-        endIndex = i + 1;
+    // Find the scale item that contains or is closest to the task end
+    if (endIndex === -1) {
+      if (i === timelineScale.length - 1) {
+        // Last item, use it if task end is after this date
+        if (taskEnd >= scaleDate) {
+          endIndex = i + 1;
+        }
+      } else {
+        const nextScaleDate = new Date(timelineScale[i + 1].date);
+        if (taskEnd > scaleDate && taskEnd <= nextScaleDate) {
+          endIndex = i + 1;
+        }
       }
     }
   }
   
-  // 인덱스가 유효하지 않은 경우 기본값 설정
+  // Fallback to find closest indices
   if (startIndex === -1) {
-    // 태스크가 타임라인 범위를 벗어난 경우, 가장 가까운 위치로 조정
-    if (taskStart < new Date(timelineScale[0].date)) {
-      startIndex = 0;
-    } else {
-      startIndex = timelineScale.length - 1;
-    }
-  }
-  if (endIndex === -1) {
-    if (taskEnd > new Date(timelineScale[timelineScale.length - 1].date)) {
-      endIndex = timelineScale.length;
-    } else {
-      endIndex = startIndex + 1;
+    startIndex = 0;
+    for (let i = 0; i < timelineScale.length; i++) {
+      if (taskStart >= new Date(timelineScale[i].date)) {
+        startIndex = i;
+      } else {
+        break;
+      }
     }
   }
   
-  // 스냅 기능: 시작과 끝을 그리드 라인에 맞춤
-  const startX = startIndex * (cellWidth + cellGap);
-  const endX = endIndex * (cellWidth + cellGap) - cellGap;
+  if (endIndex === -1) {
+    endIndex = timelineScale.length;
+    for (let i = timelineScale.length - 1; i >= 0; i--) {
+      if (taskEnd <= new Date(timelineScale[i].date)) {
+        endIndex = i + 1;
+      } else {
+        break;
+      }
+    }
+  }
+  
+  // Calculate precise positioning within the scale items
+  const startScaleDate = new Date(timelineScale[startIndex].date);
+  const endScaleDate = endIndex < timelineScale.length ? 
+    new Date(timelineScale[endIndex].date) : 
+    new Date(timelineScale[timelineScale.length - 1].date);
+  
+  // Calculate the proportion within the start scale item
+  let startX = startIndex * (cellWidth + cellGap);
+  if (startIndex < timelineScale.length - 1) {
+    const nextStartScaleDate = new Date(timelineScale[startIndex + 1].date);
+    const startCellDuration = nextStartScaleDate.getTime() - startScaleDate.getTime();
+    const startOffsetInCell = taskStart.getTime() - startScaleDate.getTime();
+    const startProgress = Math.max(0, Math.min(1, startOffsetInCell / startCellDuration));
+    startX += startProgress * cellWidth;
+  }
+  
+  // Calculate the proportion within the end scale item
+  let endX = endIndex * (cellWidth + cellGap) - cellGap;
+  if (endIndex < timelineScale.length && endIndex > 0) {
+    const endScaleItemDate = new Date(timelineScale[endIndex - 1].date);
+    const endCellDuration = endIndex < timelineScale.length ? 
+      (new Date(timelineScale[endIndex].date).getTime() - endScaleItemDate.getTime()) :
+      (24 * 60 * 60 * 1000); // Default to 1 day
+    
+    // Add one day to make end date inclusive
+    const inclusiveTaskEnd = new Date(taskEnd.getTime() + (24 * 60 * 60 * 1000));
+    const endOffsetInCell = inclusiveTaskEnd.getTime() - endScaleItemDate.getTime();
+    const endProgress = Math.max(0, Math.min(1, endOffsetInCell / endCellDuration));
+    endX = (endIndex - 1) * (cellWidth + cellGap) + endProgress * cellWidth;
+  }
+  
+  // Calculate width with minimum width constraint
   const width = Math.max(endX - startX, cellWidth * 0.1);
   
   return { x: startX, width };

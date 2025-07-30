@@ -510,7 +510,6 @@ const CustomGantt = forwardRef(({
     handleEditModalClose();
   };
 
-
   // 오늘 날짜로 스크롤
   const scrollToToday = () => {
     const today = new Date();
@@ -559,15 +558,6 @@ const CustomGantt = forwardRef(({
     scrollToToday
   }), [dynamicCellWidth, timelineScale]);
 
-  // 컴포넌트 마운트 시 오늘 날짜로 스크롤
-  // useEffect(() => {
-  //   const timer = setTimeout(() => {
-  //     scrollToToday();
-  //   }, 500);
-    
-  //   return () => clearTimeout(timer);
-  // }, [timelineScale]);
- 
   return (
     <div className="custom-gantt" ref={ref} style={{ display: 'flex', flexDirection: 'row' }}>
       {/* 컨트롤 버튼 영역 */}
@@ -776,6 +766,7 @@ const CustomGantt = forwardRef(({
               onConnectionCreate={onConnectionCreate}
               onConnectionDelete={onConnectionDelete}
               isConnectionMode={isConnectionMode}
+              zoomLevel={zoomLevel}
             />
             
             {/* gantt-timeline-body의 맨 오른쪽 끝 수직 라인 */}

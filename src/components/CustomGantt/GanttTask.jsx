@@ -56,8 +56,8 @@ const GanttTask = ({
         borderRadius: '3px',
         width: 16, // 셀 높이에 맞춤
         height: 16,
-        left: x + cellWidth - Math.sqrt(8*8*2) + 1,
-        top: y + 3,
+        left: x - 8 + width/2,
+        top: y + 4,
         cursor: 'pointer',
         display: 'block',
         minWidth: 0,

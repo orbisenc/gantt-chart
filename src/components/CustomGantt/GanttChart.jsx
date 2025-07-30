@@ -3,6 +3,7 @@ import GanttTask from './GanttTask';
 import { calculateTaskPosition } from '../../utils/utils';
 import useDragAndDrop from '../../utils/hooks/useDragAndDrop';
 import ConnectionOverlay from './ConnectionOverlay';
+import { ZoomLevel } from '../../utils/types';
 
 const GanttChart = forwardRef(({ 
   tasks = [], 
@@ -21,9 +22,9 @@ const GanttChart = forwardRef(({
   connections = [],
   onConnectionCreate,
   onConnectionDelete,
-  isConnectionMode = false
+  isConnectionMode = false,
+  zoomLevel
 }, ref) => {
-
   const containerRef = useRef(null);
 
   // 드래그 앤 드롭 훅 사용
@@ -257,7 +258,7 @@ const GanttChart = forwardRef(({
               timelineScale,
               cellWidth,
               cellGap,
-              timelineScale[0]?.unit || 'month'
+              zoomLevel
             );
             
             return (

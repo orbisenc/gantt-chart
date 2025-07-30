@@ -11,7 +11,7 @@ const GanttTimeline = forwardRef(({
   onScroll
 }, ref) => {
   const containerRef = useRef(null);
-  
+
   useEffect(() => {
     if (ref) {
       ref.current = containerRef.current;
@@ -25,7 +25,6 @@ const GanttTimeline = forwardRef(({
     const newScrollLeft = e.target.scrollLeft;
     onScroll?.(newScrollLeft);
   };
-
 
   // 상위 스케일 렌더링 함수
   const renderUpperScales = () => {
