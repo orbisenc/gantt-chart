@@ -197,12 +197,13 @@ const GanttTaskTable = forwardRef(({
               flexShrink: 0
             }} />
             
-            {/* 왼쪽 삼각형 토글 버튼 - 독립적으로 배치 */}
+            {/* 왼쪽 삼각형 토글 버튼 - 프로젝트 타입만 접기/펼치기 가능 */}
             {(() => {
               // 전체 태스크 배열에서 현재 태스크를 부모로 하는 다른 태스크들이 있는지 확인
               const hasChildren = allTasks.some(t => t.parent === task.id);
               
-              if (hasChildren) {
+              // 프로젝트 타입만 접기/펼치기 버튼 표시
+              if (hasChildren && task.type === 'project') {
                 return (
                   <button
                     className={`gantt-tree-toggle ${expandedTasks.has(task.id) ? 'expanded' : ''}`}
@@ -249,6 +250,8 @@ const GanttTaskTable = forwardRef(({
         return task.subType === TaskSubType.MILESTONE ? '-' : `${task.progress}%`;
       case 'price':
         return task.subType === TaskSubType.MILESTONE ? '-' : task.price;
+      case 'assignee':
+        return task.assignee || '';
       case 'task_type':
         const getTypeDisplayText = (task) => {
           // 마일스톤인 경우

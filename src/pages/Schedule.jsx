@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { CustomGantt } from "../components/CustomGantt";
 import { MaturityType, TaskSubType } from "../utils/types";
 import { updateTaskMaturityWithCascade, isTaskOverdue } from "../utils/maturityUtils";
-import { calculateProjectAndPhaseValues } from "../utils/utils";
+import { calculateProjectAndPhaseValues, validateGeneralTaskDateOverlap, formatNumberWithCommas } from "../utils/utils";
 import { 
   loadTasksFromLocal, 
   saveTasksToLocal, 
@@ -11,6 +11,8 @@ import {
   exportTasksToFile,
   importTasksFromFile
 } from "../utils/localStorage";
+import { initialTasks } from "../data/initialTasks";
+import TaskManager from "../services/TaskManager";
 
 const Schedule = () => {
   const [zoomLevel, setZoomLevel] = useState("month");
@@ -23,13 +25,64 @@ const Schedule = () => {
   const [connections, setConnections] = useState([]); // 태스크 연결 정보
   const [isConnectionMode, setIsConnectionMode] = useState(false); // 네트워크 연결 모드
   const ganttRef = useRef(null);
+  const taskManagerRef = useRef(null);
   const today = new Date();
 
-  // 1000단위로 콤마를 추가하는 함수
-  const formatNumberWithCommas = (number) => {
-    if (number === 0) return "0";
-    return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  };
+  // 컬럼 정의
+  const columns = [
+    {
+      id: "text",
+      header: "작업명",
+      width: 200,
+      resize: true,
+      align: "left",
+    },
+    {
+      id: "price",
+      header: "예산",
+      width: 120,
+      resize: true,
+      align: "right",
+    },
+    {
+      id: "assignee",
+      header: "담당자",
+      width: 100,
+      resize: true,
+      align: "center",
+    },
+    {
+      id: "maturity",
+      header: "성숙도",
+      width: 80,
+      resize: true,
+      align: "center",
+    },
+    {
+      id: "progress",
+      header: "진척도",
+      width: 80,
+      resize: true,
+      align: "center",
+    },
+
+  ];
+
+  // TaskManager 초기화
+  useEffect(() => {
+    if (!taskManagerRef.current) {
+      taskManagerRef.current = new TaskManager([], {
+        useLocalStorage,
+        autoSave,
+        validateDates: true
+      });
+
+      // 이벤트 리스너 등록
+      taskManagerRef.current.addEventListener('tasksChanged', (updatedTasks) => {
+        setTasks(updatedTasks);
+      });
+    }
+  }, [useLocalStorage, autoSave]);
   
   // 지연된 태스크 자동 업데이트
   useEffect(() => {
@@ -80,349 +133,6 @@ const Schedule = () => {
         return;
       }
     }
-
-    // 로컬 스토리지에 데이터가 없거나 사용하지 않는 경우 초기 데이터 설정
-    // console.log('No tasks in localStorage, using initial data');
-    const initialTasks = [
-      // 프로젝트 전체
-      {
-        id: 1,
-        text: "영월 봉래산 전망시설 조성사업 건축공사",
-        start: new Date(2025, 0, 1),
-        end: new Date(2025, 11, 31),
-        duration: 365,
-        progress: 0, // 자동 계산될 예정 (하위 태스크들의 평균)
-        price: formatNumberWithCommas(12800000000),
-        price_ratio: 100,
-        type: "project",
-        parent: 0,
-        maturity: MaturityType.DRAFT, // 초기 상태 (진행중으로 자동 변경될 예정)
-      },
-      
-      // 건축 공사
-      {
-        id: 10,
-        text: "건축공사",
-        start: new Date(2025, 0, 1),
-        end: new Date(2025, 2, 31),
-        duration: 90,
-        progress: 0,
-        price: formatNumberWithCommas(480000000),
-        price_ratio: 3.75,
-        parent: 1,
-        type: "phase",
-        maturity: MaturityType.DRAFT, // 초기 상태 (진행중으로 자동 변경될 예정)
-      },
-      {
-        id: 11,
-        text: "공통 가설공사",
-        start: new Date(2024, 11, 1), // 과거 날짜로 설정 (테스트용)
-        end: new Date(2024, 11, 15), // 과거 날짜로 설정 (테스트용)
-        duration: 15,
-        progress: 50, // 테스트용 진척도 설정
-        price: formatNumberWithCommas(120000000),
-        price_ratio: 0.94,
-        parent: 10,
-        type: "task",
-        subType: TaskSubType.NORMAL,
-        maturity: MaturityType.IN_PROGRESS, // 진행 중 상태로 설정
-      },
-      {
-        id: 12,
-        text: "토 및 지정공사",
-        start: new Date(2025, 0, 16),
-        end: new Date(2025, 1, 28),
-        duration: 44,
-        progress: 100,
-        price: formatNumberWithCommas(280000000),
-        price_ratio: 2.19,
-        parent: 10,
-        type: "task",
-        subType: TaskSubType.NORMAL,
-        maturity: MaturityType.COMPLETED, // 완료 상태로 설정
-      },
-      {
-        id: 13,
-        text: "철근콘크리트공사",
-        start: new Date(2025, 2, 1), // 과거 시작일 (테스트용)
-        end: new Date(2025, 2, 31),
-        duration: 45,
-        progress: 25, // 테스트용 진척도 설정
-        price: formatNumberWithCommas(80000000),
-        price_ratio: 0.63,
-        parent: 10,
-        type: "task",
-        subType: TaskSubType.NORMAL,
-        maturity: MaturityType.DRAFT, // 초안 상태로 설정 (진행중으로 자동 변경될 예정)
-      },
-      
-      // 2단계: 기초공사
-      {
-        id: 20,
-        text: "타워기초공사",
-        start: new Date(2025, 2, 1),
-        end: new Date(2025, 4, 31),
-        duration: 90,
-        progress: 0, // 자동 계산될 예정 (하위 태스크들의 평균)
-        price: formatNumberWithCommas(2560000000),
-        price_ratio: 20,
-        parent: 1,
-        type: "phase",
-        maturity: MaturityType.DRAFT, // 초기 상태 (진행중으로 자동 변경될 예정)
-      },
-      {
-        id: 21,
-        text: "토공",
-        start: new Date(2025, 2, 1),
-        end: new Date(2025, 2, 31),
-        duration: 31,
-        progress: 75, // 테스트용 진척도 설정
-        price: formatNumberWithCommas(320000000),
-        price_ratio: 2.5,
-        parent: 20,
-        type: "task",
-        subType: TaskSubType.NORMAL,
-        maturity: MaturityType.IN_PROGRESS, // 진행 중 상태로 설정
-      },
-      {
-        id: 22,
-        text: "기초공사사",
-        start: new Date(2025, 3, 1),
-        end: new Date(2025, 3, 20),
-        duration: 20,
-        progress: 0,
-        price: formatNumberWithCommas(640000000),
-        price_ratio: 5,
-        parent: 20,
-        type: "task",
-        subType: TaskSubType.NORMAL,
-        maturity: MaturityType.DRAFT, // 초안 상태로 설정 (테스트용)
-      },
-      {
-        id: 23,
-        text: "기초공사 관급자재",
-        start: new Date(2025, 3, 21),
-        end: new Date(2025, 4, 10),
-        duration: 20,
-        progress: 0,
-        price: formatNumberWithCommas(960000000),
-        price_ratio: 7.5,
-        parent: 20,
-        type: "task",
-        subType: TaskSubType.NORMAL,
-        maturity: MaturityType.PLANNED, // 계획 상태로 설정 (테스트용)
-      },
-      
-      // 3단계: 골조공사
-      {
-        id: 30,
-        text: "체험관전망대",
-        start: new Date(2025, 4, 15),
-        end: new Date(2025, 7, 31),
-        duration: 108,
-        progress: 0, // 자동 계산될 예정 (하위 태스크들의 평균)
-        price: formatNumberWithCommas(3840000000),
-        price_ratio: 30,
-        parent: 1,
-        type: "phase",
-        maturity: MaturityType.DRAFT, // 초기 상태 (진행중으로 자동 변경될 예정)
-      },
-      {
-        id: 31,
-        text: "포장공사",
-        start: new Date(2025, 4, 15),
-        end: new Date(2025, 5, 30),
-        duration: 46,
-        progress: 0,
-        price: formatNumberWithCommas(1280000000),
-        price_ratio: 10,
-        parent: 30,
-        type: "task",
-        subType: TaskSubType.NORMAL,
-      },
-      {
-        id: 32,
-        text: "배수공사",
-        start: new Date(2025, 5, 15),
-        end: new Date(2025, 7, 15),
-        duration: 61,
-        progress: 0,
-        price: formatNumberWithCommas(1920000000),
-        price_ratio: 15,
-        parent: 30,
-        type: "task",
-        subType: TaskSubType.NORMAL,
-      },
-      {
-        id: 33,
-        text: "데크공사",
-        start: new Date(2025, 7, 1),
-        end: new Date(2025, 7, 31),
-        duration: 31,
-        progress: 0,
-        price: formatNumberWithCommas(640000000),
-        price_ratio: 5,
-        parent: 30,
-        type: "task",
-        subType: TaskSubType.NORMAL,
-      },
-      
-      // 4단계: 마감공사
-      {
-        id: 40,
-        text: "체험관 내부공사",
-        start: new Date(2025, 7, 1),
-        end: new Date(2025, 10, 31),
-        duration: 122,
-        progress: 0,
-        price: formatNumberWithCommas(3840000000),
-        price_ratio: 30,
-        parent: 1,
-        type: "phase",
-      },
-      {
-        id: 41,
-        text: "철근콘크리트공사",
-        start: new Date(2025, 7, 1),
-        end: new Date(2025, 8, 31),
-        duration: 62,
-        progress: 0,
-        price: formatNumberWithCommas(1280000000),
-        price_ratio: 10,
-        parent: 40,
-        type: "task",
-        subType: TaskSubType.NORMAL,
-      },
-      {
-        id: 42,
-        text: "조적공사사",
-        start: new Date(2025, 8, 1),
-        end: new Date(2025, 9, 30),
-        duration: 61,
-        progress: 0,
-        price: formatNumberWithCommas(1920000000),
-        price_ratio: 15,
-        parent: 40,
-        type: "task",
-        subType: TaskSubType.NORMAL,
-      },
-      {
-        id: 43,
-        text: "타일공사",
-        start: new Date(2025, 9, 1),
-        end: new Date(2025, 10, 31),
-        duration: 61,
-        progress: 0,
-        price: formatNumberWithCommas(640000000),
-        price_ratio: 5,
-        parent: 40,
-        type: "task",
-        subType: TaskSubType.NORMAL,
-      },
-      
-      // 5단계: 완료 및 검사
-      {
-        id: 50,
-        text: "기계설비공사",
-        start: new Date(2025, 10, 1),
-        end: new Date(2025, 11, 31),
-        duration: 61,
-        progress: 0,
-        price: formatNumberWithCommas(1280000000),
-        price_ratio: 10,
-        parent: 1,
-        type: "phase",
-      },
-
-      {
-        id: 60,
-        text: "품질시험비",
-        start: new Date(2025, 10, 1),
-        end: new Date(2025, 10, 31),
-        duration: 31,
-        progress: 0,
-        price: formatNumberWithCommas(640000000),
-        price_ratio: 5,
-        parent: 1,
-        type: "task",
-        subType: TaskSubType.NORMAL,
-      },
-
-      {
-        id: 70,
-        text: "안전관리비",
-        start: new Date(2025, 11, 1),
-        end: new Date(2025, 11, 31),
-        duration: 31,
-        progress: 0,
-        price: formatNumberWithCommas(640000000),
-        price_ratio: 5,
-        parent: 1,
-        type: "task",
-        subType: TaskSubType.NORMAL,
-      },
-
-      {
-        id: 80,
-        text: "도급자설치관급자재",
-        start: new Date(2025, 8, 1),
-        end: new Date(2025, 8, 30),
-        duration: 30,
-        progress: 0,
-        price: formatNumberWithCommas(640000000),
-        price_ratio: 5,
-        parent: 1,
-        type: "task",
-        subType: TaskSubType.NORMAL,
-      },
-
-
-      
-      // 마일스톤 예시들
-      {
-        id: 90,
-        text: "설계 완료",
-        start: new Date(2025, 2, 31),
-        end: new Date(2025, 2, 31),
-        duration: 0,
-        progress: 0,
-        price: 0,
-        price_ratio: 0,
-        parent: 10,
-        type: "task",
-        subType: TaskSubType.MILESTONE,
-        maturity: MaturityType.DRAFT,
-      },
-      {
-        id: 61,
-        text: "기초공사 완료",
-        start: new Date(2025, 4, 31),
-        end: new Date(2025, 4, 31),
-        duration: 0,
-        progress: 0,
-        price: 0,
-        price_ratio: 0,
-        parent: 20,
-        type: "task",
-        subType: TaskSubType.MILESTONE,
-        maturity: MaturityType.DRAFT,
-      },
-      {
-        id: 62,
-        text: "프로젝트 완료",
-        start: new Date(2025, 11, 31),
-        end: new Date(2025, 11, 31),
-        duration: 0,
-        progress: 0,
-        price: 0,
-        price_ratio: 0,
-        parent: 1,
-        type: "task",
-        subType: TaskSubType.MILESTONE,
-        maturity: MaturityType.DRAFT,
-      },
-
-    ];
     
     // 모든 태스크에 기본 성숙도 추가
     let tasksWithMaturity = initialTasks.map(task => ({
@@ -461,17 +171,14 @@ const Schedule = () => {
     let tasksWithUpdatedMaturity = updateMaturityBasedOnProgress(tasksWithMaturity);
 
     // 최상위 태스크의 날짜를 하위 태스크에 맞춰 자동 조정 (calculateProjectAndPhaseValues 사용)
-    import('../utils/utils').then(utils => {
-      const adjustedTasks = utils.calculateProjectAndPhaseValues(tasksWithUpdatedMaturity);
-      setTasks(adjustedTasks);
+    const adjustedTasks = calculateProjectAndPhaseValues(tasksWithUpdatedMaturity);
+    setTasks(adjustedTasks);
       
-      // 초기 데이터를 로컬 스토리지에 저장
-      if (useLocalStorage && autoSave) {
-        saveTasksToLocal(adjustedTasks);
-        updateStorageInfo();
-        // console.log('Initial tasks saved to localStorage');
-      }
-    });
+    // 초기 데이터를 로컬 스토리지에 저장
+    if (useLocalStorage && autoSave) {
+      saveTasksToLocal(adjustedTasks);
+      updateStorageInfo();
+    }
   }, [useLocalStorage, autoSave]);
 
   // 스토리지 정보 업데이트
@@ -576,39 +283,6 @@ const Schedule = () => {
     // console.log('Connection deleted:', connection);
   };
 
-  // 컬럼 정의
-  const columns = [
-    {
-      id: "text",
-      header: "작업명",
-      width: 200,
-      resize: true,
-      align: "left",
-    },
-    {
-      id: "price",
-      header: "예산",
-      width: 120,
-      resize: true,
-      align: "right",
-    },
-    {
-      id: "maturity",
-      header: "성숙도",
-      width: 80,
-      resize: true,
-      align: "center",
-    },
-    {
-      id: "progress",
-      header: "진척도",
-      width: 80,
-      resize: true,
-      align: "center",
-    },
-
-  ];
-
   // 스케일 정의
   const scales = [
     {
@@ -688,12 +362,7 @@ const Schedule = () => {
   };
 
   // 태스크 업데이트 핸들러 (새로운 manageTask 함수 사용)
-  const handleTaskUpdate = (updatedTask) => {
-    // console.log('Schedule handleTaskUpdate called with:', updatedTask);
-    // console.log('Task ID:', updatedTask.id);
-    // console.log('Start date:', updatedTask.start);
-    // console.log('End date:', updatedTask.end);
-    
+  const handleTaskUpdate = (updatedTask) => { 
     const currentTask = tasks.find(t => t.id === updatedTask.id);
     if (!currentTask) {
       console.error(`Task with ID ${updatedTask.id} not found`);
@@ -703,8 +372,6 @@ const Schedule = () => {
     // 변경 사항 분석
     let hasMaturityChange = false;
     let hasDateChange = false;
-    let hasProgressChange = false;
-    let hasPriceChange = false;
 
     // 진척도에 따른 성숙도 자동 업데이트
     if (updatedTask.progress === 100 && updatedTask.maturity !== MaturityType.COMPLETED) {
@@ -729,9 +396,16 @@ const Schedule = () => {
     const startChanged = currentTask.start.getTime() !== updatedTask.start.getTime();
     const endChanged = currentTask.end.getTime() !== updatedTask.end.getTime();
     hasDateChange = startChanged || endChanged;
-    hasProgressChange = currentTask.progress !== updatedTask.progress;
-    hasPriceChange = currentTask.price !== updatedTask.price;
     const maturityChanged = currentTask.maturity !== updatedTask.maturity || hasMaturityChange;
+
+    // 날짜 겹침 검증 (일반태스크의 날짜 변경 시에만)
+    if (hasDateChange) {
+      const validation = validateGeneralTaskDateOverlap(tasks, updatedTask, updatedTask.id);
+      if (!validation.isValid) {
+        alert(`⚠️ 태스크 업데이트 실패\n\n${validation.message}\n\n같은 단계 내의 일반태스크들은 서로 겹치지 않는 날짜를 가져야 합니다.`);
+        return; // 업데이트 중단
+      }
+    }
 
     // 로깅
     // if (hasDateChange) console.log(`Task ${updatedTask.id} date changed - start: ${startChanged}, end: ${endChanged}`);
@@ -844,10 +518,6 @@ const Schedule = () => {
 
   // 모든 상위 태스크들의 날짜를 하위 태스크에 맞춰 업데이트하는 함수
   const updateAllParentTaskDates = (tasks, changedTask) => {
-    // console.log('updateAllParentTaskDates called with:', changedTask);
-    // console.log('Changed task start:', changedTask.start);
-    // console.log('Changed task end:', changedTask.end);
-    
     // 변경된 태스크가 최상위 태스크인 경우 조정 불필요
     if (changedTask.parent === 0) {
       // console.log('Top level task, no parent adjustment needed');
@@ -1032,10 +702,6 @@ const Schedule = () => {
           });
           return allIds;
         };
-
-        const childrenIds = getAllChildrenIds(prevTasks, taskId);
-        const allIdsToDelete = [taskId, ...childrenIds];
-        // console.log(`Deleting tasks with IDs: ${allIdsToDelete.join(', ')}`);
 
         const remainingTasks = deleteRecursively(prevTasks, taskId);
         
@@ -1436,7 +1102,7 @@ const Schedule = () => {
           scales={scales} 
           markers={markers}
           cellWidth={getCellWidthForZoom(zoomLevel)}
-          rowHeight={32} //{getRowHeightForZoom(zoomLevel)}
+          rowHeight={40} //{getRowHeightForZoom(zoomLevel)}
           onTaskUpdate={handleTaskUpdate}
           onTaskSelect={handleTaskSelect}
           onTaskAdd={handleTaskAdd}

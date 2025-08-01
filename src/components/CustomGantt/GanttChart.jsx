@@ -23,7 +23,8 @@ const GanttChart = forwardRef(({
   onConnectionCreate,
   onConnectionDelete,
   isConnectionMode = false,
-  zoomLevel
+  zoomLevel,
+  tableRowCount = null // 테이블 행 개수 (높이 계산용)
 }, ref) => {
   const containerRef = useRef(null);
 
@@ -100,7 +101,7 @@ const GanttChart = forwardRef(({
   };
 
   const totalWidth = timelineScale.length * (cellWidth + cellGap) - cellGap; // 마지막 간격 제거
-  const totalHeight = tasks.length * rowHeight;
+  const totalHeight = (tableRowCount !== null ? tableRowCount : tasks.length) * rowHeight;
 
   const nodeTypes = {
     customNode: GanttTask,
@@ -167,7 +168,7 @@ const GanttChart = forwardRef(({
 
           <div className="gantt-grid-line-horizontal-container">
             {/* 수평 그리드 라인 */}
-            {tasks.map((_, index) => (
+            {Array.from({ length: tableRowCount !== null ? tableRowCount : tasks.length }).map((_, index) => (
               <div
                 key={`hline-${index}`}
                 className="gantt-grid-line-horizontal"
@@ -236,9 +237,9 @@ const GanttChart = forwardRef(({
                 top: 0,
                 height: '100%',
                 width: '2px',
-                borderLeft: '2px dashed #ff4444',
+                borderLeft: '2px solid #ff4444',
                 pointerEvents: 'none',
-                zIndex: 11
+                zIndex: 25
               }}
             >
               {marker.text && (
@@ -261,16 +262,23 @@ const GanttChart = forwardRef(({
               zoomLevel
             );
             
+            // chartRowIndex가 있으면 사용, 없으면 원래 index 사용
+            const rowIndex = task.chartRowIndex !== undefined ? task.chartRowIndex : index;
+            
+            // 일반태스크는 Phase 내부에 적당한 크기로 표시
+            const isGeneralTask = task.type === 'task' && task.subType !== 'milestone';
+            const taskPosition = {
+              x: position.x + (isGeneralTask ? 4 : 2), // 일반태스크는 약간 안쪽에
+              y: rowIndex * rowHeight + (isGeneralTask ? 5 : 3), // 일반태스크는 약간 아래쪽에
+              width: position.width - (isGeneralTask ? 8 : 6), // 일반태스크는 약간 좁게
+              height: rowHeight - (isGeneralTask ? 10 : 8) // 일반태스크는 적당한 크기로
+            };
+            
             return (
               <GanttTask
                 key={task.id}
                 task={task}
-                position={{
-                  x: position.x + 2, // 좌측 3px 패딩
-                  y: index * rowHeight + 3, // 상단 4px 패딩
-                  width: position.width - 6, // 좌우 3px씩 패딩
-                  height: rowHeight - 8 // 상하 4px씩 패딩
-                }}
+                position={taskPosition}
                 isSelected={selectedTask?.id === task.id}
                 onMouseDown={(e) => handleTaskMouseDown(e, task)}
                 onDoubleClick={handleTaskDoubleClick}
