@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { CustomGantt } from "../components/CustomGantt";
+import ConfirmationModal from "../components/ConfirmationModal";
+import AlertModal from "../components/AlertModal";
 import { MaturityType, TaskSubType } from "../utils/types";
 import { updateTaskMaturityWithCascade, isTaskOverdue } from "../utils/maturityUtils";
 import { calculateProjectAndPhaseValues, validateGeneralTaskDateOverlap, formatNumberWithCommas } from "../utils/utils";
@@ -24,9 +26,32 @@ const Schedule = () => {
   const [storageInfo, setStorageInfo] = useState(null); // 스토리지 정보
   const [connections, setConnections] = useState([]); // 태스크 연결 정보
   const [isConnectionMode, setIsConnectionMode] = useState(false); // 네트워크 연결 모드
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: null,
+    type: "warning"
+  });
+  const [alertModal, setAlertModal] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info"
+  });
   const ganttRef = useRef(null);
   const taskManagerRef = useRef(null);
   const today = new Date();
+
+  // Alert 헬퍼 함수
+  const showAlert = (message, type = "info", title = "") => {
+    setAlertModal({
+      isOpen: true,
+      title,
+      message,
+      type
+    });
+  };
 
   // 컬럼 정의
   const columns = [
@@ -200,9 +225,9 @@ const Schedule = () => {
   const handleSaveToLocal = () => {
     if (saveTasksToLocal(tasks)) {
       updateStorageInfo();
-      alert(`${tasks.length}개의 태스크가 로컬 스토리지에 저장되었습니다.`);
+      showAlert(`${tasks.length}개의 태스크가 로컬 스토리지에 저장되었습니다.`, "success", "저장 완료");
     } else {
-      alert('저장 중 오류가 발생했습니다.');
+      showAlert('저장 중 오류가 발생했습니다.', "error", "저장 실패");
     }
   };
 
@@ -211,28 +236,35 @@ const Schedule = () => {
     if (loadedTasks) {
       setTasks(loadedTasks);
       updateStorageInfo();
-      alert(`${loadedTasks.length}개의 태스크를 로컬 스토리지에서 불러왔습니다.`);
+      showAlert(`${loadedTasks.length}개의 태스크를 로컬 스토리지에서 불러왔습니다.`, "success", "불러오기 완료");
     } else {
-      alert('로컬 스토리지에서 데이터를 불러올 수 없습니다.');
+      showAlert('로컬 스토리지에서 데이터를 불러올 수 없습니다.', "error", "불러오기 실패");
     }
   };
 
   const handleClearLocal = () => {
-    if (window.confirm('로컬 스토리지의 모든 태스크 데이터를 삭제하시겠습니까?')) {
-      if (clearLocalTasks()) {
-        updateStorageInfo();
-        alert('로컬 스토리지가 초기화되었습니다.');
-      } else {
-        alert('초기화 중 오류가 발생했습니다.');
+    setConfirmModal({
+      isOpen: true,
+      title: "로컬 스토리지 초기화",
+      message: "로컬 스토리지의 모든 태스크 데이터를 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.",
+      type: "danger",
+      onConfirm: () => {
+        if (clearLocalTasks()) {
+          updateStorageInfo();
+          showAlert('로컬 스토리지가 초기화되었습니다.', "success", "초기화 완료");
+        } else {
+          showAlert('초기화 중 오류가 발생했습니다.', "error", "초기화 실패");
+        }
+        setConfirmModal({ ...confirmModal, isOpen: false });
       }
-    }
+    });
   };
 
   const handleExportTasks = () => {
     if (exportTasksToFile(tasks)) {
-      alert('태스크 데이터가 파일로 내보내졌습니다.');
+      showAlert('태스크 데이터가 파일로 내보내졌습니다.', "success", "내보내기 완료");
     } else {
-      alert('내보내기 중 오류가 발생했습니다.');
+      showAlert('내보내기 중 오류가 발생했습니다.', "error", "내보내기 실패");
     }
   };
 
@@ -242,18 +274,25 @@ const Schedule = () => {
 
     importTasksFromFile(file)
       .then(importedTasks => {
-        if (window.confirm(`${importedTasks.length}개의 태스크를 가져왔습니다. 현재 데이터를 대체하시겠습니까?`)) {
-          setTasks(importedTasks);
-          if (useLocalStorage && autoSave) {
-            saveTasksToLocal(importedTasks);
-            updateStorageInfo();
+        setConfirmModal({
+          isOpen: true,
+          title: "태스크 가져오기",
+          message: `${importedTasks.length}개의 태스크를 가져왔습니다.\n현재 데이터를 대체하시겠습니까?\n\n기존 데이터는 완전히 삭제됩니다.`,
+          type: "warning",
+          onConfirm: () => {
+            setTasks(importedTasks);
+            if (useLocalStorage && autoSave) {
+              saveTasksToLocal(importedTasks);
+              updateStorageInfo();
+            }
+            showAlert('태스크 데이터를 성공적으로 가져왔습니다.', "success", "가져오기 완료");
+            setConfirmModal({ ...confirmModal, isOpen: false });
           }
-          alert('태스크 데이터를 성공적으로 가져왔습니다.');
-        }
+        });
       })
       .catch(error => {
         console.error('Import error:', error);
-        alert('파일을 가져오는 중 오류가 발생했습니다.');
+        showAlert('파일을 가져오는 중 오류가 발생했습니다.', "error", "가져오기 실패");
       });
     
     // 파일 입력 초기화
@@ -402,7 +441,7 @@ const Schedule = () => {
     if (hasDateChange) {
       const validation = validateGeneralTaskDateOverlap(tasks, updatedTask, updatedTask.id);
       if (!validation.isValid) {
-        alert(`⚠️ 태스크 업데이트 실패\n\n${validation.message}\n\n같은 단계 내의 일반태스크들은 서로 겹치지 않는 날짜를 가져야 합니다.`);
+        showAlert(`${validation.message}\n\n같은 단계 내의 일반태스크들은 서로 겹치지 않는 날짜를 가져야 합니다.`, "error", "태스크 업데이트 실패");
         return; // 업데이트 중단
       }
     }
@@ -819,16 +858,23 @@ const Schedule = () => {
 
   // 태스크 삭제 핸들러 (새로운 manageTask 함수 사용)
   const handleTaskDelete = (taskId) => {
-    // 하위 태스크가 있는지 확인
+    const taskToDelete = tasks.find(task => task.id === taskId);
     const hasChildren = tasks.some(task => task.parent === taskId);
     
-    if (hasChildren) {
-      if (!window.confirm('하위 태스크가 있습니다. 모든 하위 태스크도 함께 삭제됩니다. 계속하시겠습니까?')) {
-        return;
-      }
-    }
+    const message = hasChildren 
+      ? `"${taskToDelete?.text || '태스크'}"를 삭제하시겠습니까?\n\n하위 태스크가 있습니다. 모든 하위 태스크도 함께 삭제됩니다.`
+      : `"${taskToDelete?.text || '태스크'}"를 삭제하시겠습니까?`;
     
-    manageTask.delete(taskId);
+    setConfirmModal({
+      isOpen: true,
+      title: "태스크 삭제",
+      message: message,
+      type: "danger",
+      onConfirm: () => {
+        manageTask.delete(taskId);
+        setConfirmModal({ ...confirmModal, isOpen: false });
+      }
+    });
   };
 
   // 오늘 날짜로 이동
@@ -1117,6 +1163,23 @@ const Schedule = () => {
           isConnectionMode={isConnectionMode}
         />
       </div>
+      
+      <ConfirmationModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+      />
+      
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+      />
     </div>
   );    
 };
