@@ -90,21 +90,78 @@ export const isWeekend = (date) => {
  * @param {Array} tasks - 플랫 태스크 목록
  * @returns {Array} 계층 구조 태스크 목록
  */
+/**
+ * 새로운 계층 구조 규칙에 따라 태스크를 재정렬합니다.
+ * 1. Project (parent: 0) - Phase와 Milestone만 자식으로 가질 수 있음
+ * 2. Phase (parent: Project) - 일반태스크만 자식으로 가질 수 있음  
+ * 3. 일반태스크 (parent: Phase) - 자식 없음
+ * 4. Milestone (parent: Project with parent: 0) - 자식 없음
+ */
+export const validateAndFixTaskHierarchy = (tasks) => {
+  const validatedTasks = [...tasks];
+  const taskMap = new Map();
+  
+  // 태스크 맵 생성
+  validatedTasks.forEach(task => {
+    taskMap.set(task.id, task);
+  });
+  
+  // 계층 구조 규칙 검증 및 수정
+  validatedTasks.forEach(task => {
+    const parentTask = task.parent ? taskMap.get(task.parent) : null;
+    
+    // 규칙 위반 검사 및 수정
+    if (parentTask) {
+      // Phase는 Project에만 속할 수 있음
+      if (task.type === TaskType.PHASE && parentTask.type !== TaskType.PROJECT) {
+        console.warn(`Phase task ${task.id} has invalid parent type ${parentTask.type}, moving to root`);
+        task.parent = 0;
+      }
+      
+      // 일반태스크는 Phase에만 속할 수 있음
+      if (task.type === TaskType.TASK && task.subType !== 'milestone' && parentTask.type !== TaskType.PHASE) {
+        console.warn(`General task ${task.id} has invalid parent type ${parentTask.type}, needs Phase parent`);
+        // Phase 부모를 찾거나 생성해야 함
+      }
+      
+      // 마일스톤은 최상위 Project에만 속할 수 있음
+      if (task.subType === 'milestone' && (parentTask.type !== TaskType.PROJECT || parentTask.parent !== 0)) {
+        console.warn(`Milestone task ${task.id} has invalid parent, moving to root project`);
+        // 최상위 프로젝트를 찾아 이동
+        const rootProject = validatedTasks.find(t => t.type === TaskType.PROJECT && (t.parent === 0 || !t.parent));
+        if (rootProject) {
+          task.parent = rootProject.id;
+        }
+      }
+    } else if (task.parent === 0 || !task.parent) {
+      // 루트 레벨 규칙: Project만 허용
+      if (task.type !== TaskType.PROJECT) {
+        console.warn(`Non-project task ${task.id} at root level, type: ${task.type}`);
+      }
+    }
+  });
+  
+  return validatedTasks;
+};
+
 export const buildTaskHierarchy = (tasks) => {
   //console.log("buildTaskHierarchy called with tasks:", tasks.length);
+  
+  // 먼저 계층 구조 규칙을 검증하고 수정
+  const validatedTasks = validateAndFixTaskHierarchy(tasks);
   
   const taskMap = new Map();
   const rootTasks = [];
   
   // 모든 태스크를 맵에 저장
-  tasks.forEach(task => {
+  validatedTasks.forEach(task => {
     taskMap.set(task.id, { ...task, children: [] });
   });
   
   //console.log("TaskMap created with entries:", taskMap.size);
   
   // 부모-자식 관계 설정
-  tasks.forEach(task => {
+  validatedTasks.forEach(task => {
     const currentTask = taskMap.get(task.id);
     if (task.parent && task.parent !== 0) {
       const parentTask = taskMap.get(task.parent);
@@ -122,10 +179,34 @@ export const buildTaskHierarchy = (tasks) => {
     }
   });
   
-  //console.log("Root tasks:", rootTasks.length);
-  //console.log("Root task IDs:", rootTasks.map(t => t.id));
+  // 계층 구조에 따라 정렬
+  const sortTasksByHierarchy = (tasks) => {
+    return tasks.sort((a, b) => {
+      // 1. Project 타입이 먼저
+      if (a.type === TaskType.PROJECT && b.type !== TaskType.PROJECT) return -1;
+      if (b.type === TaskType.PROJECT && a.type !== TaskType.PROJECT) return 1;
+      
+      // 2. 같은 타입 내에서는 ID 순서
+      return a.id - b.id;
+    });
+  };
   
-  return rootTasks;
+  const sortedRootTasks = sortTasksByHierarchy(rootTasks);
+  
+  // 자식 태스크들도 정렬
+  const sortChildren = (task) => {
+    if (task.children && task.children.length > 0) {
+      task.children = sortTasksByHierarchy(task.children);
+      task.children.forEach(sortChildren);
+    }
+  };
+  
+  sortedRootTasks.forEach(sortChildren);
+  
+  //console.log("Root tasks:", sortedRootTasks.length);
+  //console.log("Root task IDs:", sortedRootTasks.map(t => t.id));
+  
+  return sortedRootTasks;
 };
 
 /**
@@ -142,9 +223,20 @@ export const flattenTaskHierarchy = (hierarchyTasks) => {
     tasks.forEach(task => {
       result.push({ ...task, level });
       //console.log(`Flattened task ${task.id} at level ${level}`);
+      
       if (task.children && task.children.length > 0) {
-        //console.log(`Task ${task.id} has ${task.children.length} children`);
-        flatten(task.children, level + 1);
+        // 새로운 계층 구조에 맞게 자식 태스크 정렬
+        const sortedChildren = [...task.children].sort((a, b) => {
+          // Phase가 먼저, 그 다음 Milestone
+          if (a.type === TaskType.PHASE && b.subType === 'milestone') return -1;
+          if (b.type === TaskType.PHASE && a.subType === 'milestone') return 1;
+          
+          // 같은 타입 내에서는 ID 순서
+          return a.id - b.id;
+        });
+        
+        //console.log(`Task ${task.id} has ${sortedChildren.length} children`);
+        flatten(sortedChildren, level + 1);
       }
     });
   };
@@ -243,7 +335,6 @@ const calculatePositionWithScaling = (task, timelineScale, cellWidth, cellGap, t
   // Find the closest timeline scale index for the task start date
   let startIndex = -1;
   let endIndex = -1;
-  
   for (let i = 0; i < timelineScale.length; i++) {
     const scaleDate = new Date(timelineScale[i].date);
     
@@ -298,20 +389,22 @@ const calculatePositionWithScaling = (task, timelineScale, cellWidth, cellGap, t
       }
     }
   }
-  
+
   // Calculate precise positioning within the scale items
   const startScaleDate = new Date(timelineScale[startIndex].date);
   const endScaleDate = endIndex < timelineScale.length ? 
     new Date(timelineScale[endIndex].date) : 
     new Date(timelineScale[timelineScale.length - 1].date);
-  
+
   // Calculate the proportion within the start scale item
   let startX = startIndex * (cellWidth + cellGap);
+  
   if (startIndex < timelineScale.length - 1) {
     const nextStartScaleDate = new Date(timelineScale[startIndex + 1].date);
     const startCellDuration = nextStartScaleDate.getTime() - startScaleDate.getTime();
     const startOffsetInCell = taskStart.getTime() - startScaleDate.getTime();
     const startProgress = Math.max(0, Math.min(1, startOffsetInCell / startCellDuration));
+    
     startX += startProgress * cellWidth;
   }
   
@@ -323,9 +416,7 @@ const calculatePositionWithScaling = (task, timelineScale, cellWidth, cellGap, t
       (new Date(timelineScale[endIndex].date).getTime() - endScaleItemDate.getTime()) :
       (24 * 60 * 60 * 1000); // Default to 1 day
     
-    // Add one day to make end date inclusive
-    const inclusiveTaskEnd = new Date(taskEnd.getTime() + (24 * 60 * 60 * 1000));
-    const endOffsetInCell = inclusiveTaskEnd.getTime() - endScaleItemDate.getTime();
+    const endOffsetInCell = taskEnd.getTime() - endScaleItemDate.getTime();
     const endProgress = Math.max(0, Math.min(1, endOffsetInCell / endCellDuration));
     endX = (endIndex - 1) * (cellWidth + cellGap) + endProgress * cellWidth;
   }
@@ -1233,12 +1324,12 @@ export const isTaskFieldEditable = (taskType, field, taskSubType) => {
       // 프로젝트는 모든 필드가 자동 계산
       return false;
     case TaskType.PHASE:
-      // 단계는 텍스트만 편집 가능, 날짜/진척도/성숙도는 자동 계산
-      return field === 'text';
+      // 단계는 텍스트와 담당자만 편집 가능, 날짜/진척도/성숙도는 자동 계산
+      return field === 'text' || field === 'assignee';
     case TaskType.TASK:
-      // 마일스톤인 경우 날짜와 텍스트, 서브타입만 편집 가능
+      // 마일스톤인 경우 날짜와 텍스트, 담당자, 서브타입만 편집 가능
       if (taskSubType === TaskSubType.MILESTONE) {
-        return field === 'start' || field === 'end' || field === 'text' || field === 'subType';
+        return field === 'start' || field === 'end' || field === 'text' || field === 'assignee' || field === 'subType';
       }
       // 일반 태스크는 모든 필드 편집 가능
       return true;
@@ -1249,9 +1340,72 @@ export const isTaskFieldEditable = (taskType, field, taskSubType) => {
 
 /**
  * 태스크에 하위 태스크를 추가할 수 있는지 확인합니다.
+ * Project와 Phase 태스크만 하위 태스크를 가질 수 있습니다.
  * @param {string} taskType - 태스크 타입
  * @returns {boolean} 하위 태스크 추가 가능 여부
  */
 export const canAddChildTask = (taskType) => {
+  // Project와 Phase 태스크는 하위 태스크를 가질 수 있음
+  // - Project: Phase와 Milestone을 가질 수 있음
+  // - Phase: 일반태스크를 가질 수 있음
+  // - 일반태스크와 마일스톤: 자식 없음
   return taskType === TaskType.PROJECT || taskType === TaskType.PHASE;
+};
+
+/**
+ * 같은 Phase 부모를 가진 일반태스크들 간의 날짜 겹침을 검사합니다.
+ * @param {Array} allTasks - 전체 태스크 배열
+ * @param {Object} taskToValidate - 검증할 태스크 (새로 생성되거나 수정될 태스크)
+ * @param {number} excludeTaskId - 검증에서 제외할 태스크 ID (업데이트 시 자기 자신 제외)
+ * @returns {Object} { isValid: boolean, conflictingTask: Object|null, message: string }
+ */
+export const validateGeneralTaskDateOverlap = (allTasks, taskToValidate, excludeTaskId = null) => {
+  // 일반태스크가 아니면 검증 불필요
+  if (taskToValidate.type !== TaskType.TASK || taskToValidate.subType === 'milestone') {
+    return { isValid: true, conflictingTask: null, message: '' };
+  }
+
+  // Phase 부모가 없으면 검증 불필요
+  if (!taskToValidate.parent) {
+    return { isValid: true, conflictingTask: null, message: '' };
+  }
+
+  // 부모 태스크 찾기
+  const parentTask = allTasks.find(t => t.id === taskToValidate.parent);
+  if (!parentTask || parentTask.type !== TaskType.PHASE) {
+    return { isValid: true, conflictingTask: null, message: '' };
+  }
+
+  // 같은 Phase 부모를 가진 다른 일반태스크들 찾기
+  const siblingGeneralTasks = allTasks.filter(task => 
+    task.parent === taskToValidate.parent && 
+    task.type === TaskType.TASK && 
+    task.subType !== 'milestone' &&
+    task.id !== excludeTaskId && // 자기 자신 제외
+    task.id !== taskToValidate.id // 새로 생성되는 경우 제외
+  );
+
+  // 날짜 겹침 검사
+  const taskStart = new Date(taskToValidate.start);
+  const taskEnd = new Date(taskToValidate.end);
+
+  for (const siblingTask of siblingGeneralTasks) {
+    const siblingStart = new Date(siblingTask.start);
+    const siblingEnd = new Date(siblingTask.end);
+
+    // 날짜 겹침 검사 로직
+    // 겹치지 않는 조건: taskEnd < siblingStart || taskStart > siblingEnd
+    // 겹치는 조건: !(taskEnd < siblingStart || taskStart > siblingEnd)
+    const isOverlapping = !(taskEnd < siblingStart || taskStart > siblingEnd);
+
+    if (isOverlapping) {
+      return {
+        isValid: false,
+        conflictingTask: siblingTask,
+        message: `같은 단계 내의 "${siblingTask.text}" 작업과 날짜가 겹칩니다. (${formatDate(siblingStart, 'YYYY-MM-DD')} ~ ${formatDate(siblingEnd, 'YYYY-MM-DD')})`
+      };
+    }
+  }
+
+  return { isValid: true, conflictingTask: null, message: '' };
 }; 

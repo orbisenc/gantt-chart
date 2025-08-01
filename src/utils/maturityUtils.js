@@ -145,6 +145,9 @@ export const isTaskOverdue = (task) => {
 export const shouldShowDraftWarning = (task) => {
   if (task.maturity !== MaturityType.DRAFT) return false;
   
+  // Phase 타입은 경고 표시 제외
+  if (task.type === 'phase') return false;
+  
   const today = new Date();
   const taskStart = new Date(task.start);
   

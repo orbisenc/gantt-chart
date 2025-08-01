@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { formatDate, formatNumberWithCommas, generateTimelineScale, isTaskFieldEditable } from '../../utils/utils';
+import { formatDate, formatNumberWithCommas, generateTimelineScale, isTaskFieldEditable, validateGeneralTaskDateOverlap } from '../../utils/utils';
 import { MaturityType, MaturityLabels, TaskType, TaskSubType, TaskSubTypeLabels } from '../../utils/types';
 import { isTaskEditable } from '../../utils/maturityUtils';
 
@@ -10,7 +10,8 @@ const TaskEditModal = ({
   onSave,
   onDelete,
   taskManager, // 태스크 관리 함수들
-  allTasks = [] // 전체 태스크 배열 (관계 분석용)
+  allTasks = [], // 전체 태스크 배열 (관계 분석용)
+  onChildTaskEdit // 하위 태스크 편집을 위한 콜백
 }) => {
   const [formData, setFormData] = useState({
     text: '',
@@ -18,11 +19,15 @@ const TaskEditModal = ({
     end: '',
     progress: 0,
     price: '',
+    assignee: '',
     price_ratio: 0,
     type: 'task',
     subType: TaskSubType.NORMAL,
     maturity: MaturityType.DRAFT
   });
+  
+  // 날짜 겹침 검증 상태
+  const [dateOverlapWarning, setDateOverlapWarning] = useState('');
 
   useEffect(() => {
     if (task) {
@@ -32,11 +37,14 @@ const TaskEditModal = ({
         end: formatDate(task.end, 'YYYY-MM-DD') || '',
         progress: task.progress || 0,
         price: task.price || '',
+        assignee: task.assignee || '',
         price_ratio: task.price_ratio || 0,
         type: task.type || 'task',
         subType: task.subType || TaskSubType.NORMAL,
         maturity: task.maturity || MaturityType.DRAFT
       });
+      // 태스크가 변경되면 경고 초기화
+      setDateOverlapWarning('');
     }
   }, [task]);
 
@@ -77,10 +85,43 @@ const TaskEditModal = ({
     //   processedValue = snapToGrid(value, field);
     // }
     
-    setFormData(prev => ({
-      ...prev,
+    const updatedFormData = {
+      ...formData,
       [field]: processedValue
-    }));
+    };
+    
+    setFormData(updatedFormData);
+    
+    // 일반태스크의 날짜 변경 시 실시간 겹침 검증
+    if ((field === 'start' || field === 'end') && 
+        updatedFormData.type === 'task' && 
+        updatedFormData.subType === 'normal' &&
+        updatedFormData.start && 
+        updatedFormData.end &&
+        task?.parent) {
+      
+      const tempTask = {
+        ...task,
+        start: new Date(updatedFormData.start),
+        end: new Date(updatedFormData.end),
+        type: updatedFormData.type,
+        subType: updatedFormData.subType,
+        parent: task.parent
+      };
+      
+      // 현재 태스크를 제외하고 검증
+      const otherTasks = allTasks.filter(t => t.id !== task.id);
+      const validationResult = validateGeneralTaskDateOverlap(tempTask, otherTasks);
+      
+      if (validationResult.hasOverlap) {
+        setDateOverlapWarning(`경고: ${validationResult.conflictingTask.text}와 날짜가 겹칩니다!`);
+      } else {
+        setDateOverlapWarning('');
+      }
+    } else if (field === 'type' || field === 'subType') {
+      // 타입이 변경되면 경고 초기화
+      setDateOverlapWarning('');
+    }
   };
 
   const handleSubmit = (e) => {
@@ -98,6 +139,12 @@ const TaskEditModal = ({
     
     if (!validatePrice(formData.price)) {
       alert('올바른 가격을 입력해주세요.');
+      return;
+    }
+    
+    // 날짜 겹침 검증 (일반태스크만)
+    if (dateOverlapWarning) {
+      alert(dateOverlapWarning);
       return;
     }
     
@@ -120,6 +167,7 @@ const TaskEditModal = ({
       end: new Date(formData.end),
       progress: isMilestone ? 0 : parseInt(formData.progress),
       price: isMilestone ? 0 : formData.price,
+      assignee: formData.assignee,
       price_ratio: isMilestone ? 0 : parseFloat(formData.price_ratio),
       type: formData.type,
       subType: formData.subType, // 서브타입도 저장
@@ -186,6 +234,13 @@ const TaskEditModal = ({
         return '#495057';
       default:
         return '#495057';
+    }
+  };
+
+  // 하위 태스크 클릭 핸들러
+  const handleChildTaskClick = (childTask) => {
+    if (onChildTaskEdit) {
+      onChildTaskEdit(childTask);
     }
   };
 
@@ -290,7 +345,7 @@ const TaskEditModal = ({
             fontSize: '14px',
             fontWeight: '500'
           }}>
-            📋 단계는 하위 태스크를 기준으로 날짜/진척도/성숙도가 자동 계산됩니다. 작업명만 수정 가능합니다.
+            📋 단계는 하위 태스크를 기준으로 날짜/진척도/성숙도가 자동 계산됩니다. 작업명과 담당자만 수정 가능합니다.
           </div>
         )}
         
@@ -306,7 +361,23 @@ const TaskEditModal = ({
             fontSize: '14px',
             fontWeight: '500'
           }}>
-            📍 마일스톤은 날짜만 설정 가능하며, 진척도/성숙도/예산/보할은 수정할 수 없습니다.
+            📍 마일스톤은 날짜와 담당자만 설정 가능하며, 진척도/성숙도/예산/보할은 수정할 수 없습니다.
+          </div>
+        )}
+        
+        {/* 날짜 겹침 경고 메시지 */}
+        {dateOverlapWarning && (
+          <div style={{
+            backgroundColor: '#fff3cd',
+            border: '1px solid #ffeaa7',
+            color: '#856404',
+            padding: '10px 20px',
+            margin: '0 20px',
+            borderRadius: '4px',
+            fontSize: '14px',
+            fontWeight: '500'
+          }}>
+            ⚠️ {dateOverlapWarning}
           </div>
         )}
         
@@ -330,6 +401,7 @@ const TaskEditModal = ({
             )}
           </div>
         )}
+
         
         <form onSubmit={handleSubmit} style={formStyle}>
           <div className="form-group" style={formGroupStyle}>
@@ -494,6 +566,23 @@ const TaskEditModal = ({
           </div>
 
           <div className="form-group" style={formGroupStyle}>
+            <label style={labelStyle}>담당자</label>
+            <input
+              type="text"
+              value={formData.assignee}
+              onChange={(e) => handleChange('assignee', e.target.value)}
+              style={{
+                ...inputStyle,
+                backgroundColor: !isFieldEditable('assignee') ? '#f8f9fa' : inputStyle.backgroundColor,
+                color: !isFieldEditable('assignee') ? '#6c757d' : inputStyle.color,
+                cursor: !isFieldEditable('assignee') ? 'not-allowed' : inputStyle.cursor
+              }}
+              disabled={!isFieldEditable('assignee')}
+              placeholder="담당자명"
+            />
+          </div>
+
+          <div className="form-group" style={formGroupStyle}>
             <label style={labelStyle}>보할 (%)</label>
             <input
               type="number"
@@ -511,6 +600,116 @@ const TaskEditModal = ({
               disabled={!isFieldEditable('price_ratio')}
             />
           </div>
+
+          {/* 일반태스크의 상위 Phase 태스크 표시 - 버튼 바로 위에 위치 */}
+          {formData.type === 'task' && formData.subType === TaskSubType.NORMAL && taskManager && relationshipInfo.parent && relationshipInfo.parent.type === 'phase' && (
+            <div style={{
+              backgroundColor: '#fff3e0',
+              border: '1px solid #ffcc02',
+              borderRadius: '4px',
+              color: '#e65100',
+              padding: '15px',
+              marginTop: '20px',
+              marginBottom: '10px',
+              fontSize: '14px'
+            }}>
+              <strong>📋 상위 작업</strong>
+              <div style={{ marginTop: '10px' }}>
+                <button
+                  onClick={() => handleChildTaskClick(relationshipInfo.parent)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    margin: '0',
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #ffb74d',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    textAlign: 'left',
+                    display: 'block'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.backgroundColor = '#fef7e0';
+                    e.currentTarget.style.borderColor = '#e65100';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.backgroundColor = '#ffffff';
+                    e.currentTarget.style.borderColor = '#ffb74d';
+                  }}
+                >
+                  <div style={{ fontWeight: '500', color: '#e65100', marginBottom: '4px' }}>
+                    {relationshipInfo.parent.text}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#666' }}>
+                    {formatDate(relationshipInfo.parent.start, 'YYYY-MM-DD')} ~ {formatDate(relationshipInfo.parent.end, 'YYYY-MM-DD')} |{' '}
+                    진행률: {relationshipInfo.parent.progress || 0}% |{' '}
+                    담당자: {relationshipInfo.parent.assignee || '미지정'}
+                  </div>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Phase 타입의 하위 일반태스크 목록 - 버튼 바로 위에 위치 */}
+          {formData.type === 'phase' && taskManager && relationshipInfo.children.length > 0 && (
+            <div style={{
+              backgroundColor: '#e3f2fd',
+              border: '1px solid #bbdefb',
+              borderRadius: '4px',
+              color: '#1565c0',
+              padding: '15px',
+              marginTop: '20px',
+              marginBottom: '10px',
+              fontSize: '14px'
+            }}>
+              <strong>📋 하위 작업 목록</strong>
+              <div style={{ marginTop: '10px' }}>
+                {relationshipInfo.children
+                  .filter(child => child.type === 'task' && child.subType !== TaskSubType.MILESTONE)
+                  .map(child => (
+                    <button
+                      key={child.id}
+                      onClick={() => handleChildTaskClick(child)}
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        margin: '6px 0',
+                        backgroundColor: '#ffffff',
+                        border: '1px solid #90caf9',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        textAlign: 'left',
+                        display: 'block'
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.backgroundColor = '#f3e5f5';
+                        e.currentTarget.style.borderColor = '#1565c0';
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.backgroundColor = '#ffffff';
+                        e.currentTarget.style.borderColor = '#90caf9';
+                      }}
+                    >
+                      <div style={{ fontWeight: '500', color: '#1565c0', marginBottom: '4px' }}>
+                        {child.text}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#666' }}>
+                        {formatDate(child.start, 'YYYY-MM-DD')} ~ {formatDate(child.end, 'YYYY-MM-DD')} |{' '}
+                        진행률: {child.progress || 0}% |{' '}
+                        담당자: {child.assignee || '미지정'}
+                      </div>
+                    </button>
+                  ))}
+                {relationshipInfo.children.filter(child => child.type === 'task' && child.subType !== TaskSubType.MILESTONE).length === 0 && (
+                  <div style={{ color: '#666', fontStyle: 'italic', textAlign: 'center', padding: '10px' }}>
+                    하위 일반태스크가 없습니다.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="form-actions" style={actionsStyle}>
             <button

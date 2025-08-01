@@ -23,6 +23,21 @@ const GanttTask = ({
   const taskRef = useRef(null);
 
   const getTaskStyle = () => {
+    // z-index 계산: 일반태스크 > 마일스톤 > 프로젝트 > Phase 순으로 우선순위 설정
+    const getZIndex = () => {
+      const baseZ = isSelected ? 20 : 10;
+      switch (task.type) {
+        case 'task':
+          return task.subType === TaskSubType.MILESTONE ? baseZ + 5 : baseZ + 10; // 일반태스크가 가장 높음
+        case 'project':
+          return baseZ + 2;
+        case 'phase':
+          return baseZ; // Phase가 가장 낮음
+        default:
+          return baseZ;
+      }
+    };
+
     const baseStyle = {
       position: 'absolute',
       left: x,
@@ -30,7 +45,7 @@ const GanttTask = ({
       width: width,
       height: height,
       cursor: 'pointer',
-      zIndex: isSelected ? 10 : 5,
+      zIndex: getZIndex(),
       border: isSelected ? '2px solid #1f6bd9' : '1px solid transparent',
       borderRadius: '3px',
       display: 'flex',
@@ -68,12 +83,13 @@ const GanttTask = ({
     // 태스크 타입에 따른 스타일 적용
     switch (task.type) {
       case 'phase':
-        const phaseColor = getTaskColorByMaturity(task.maturity, '#00ba94', task);
+        const phaseColor = '#00ba94'; // 고정된 녹색 사용
         return {
           ...baseStyle,
-          backgroundColor: `${phaseColor} !important`,
-          background: phaseColor,
-          color: '#ffffff',
+          backgroundColor: 'transparent',
+          background: 'transparent',
+          border: `2px dashed ${phaseColor}`,
+          color: phaseColor,
           cursor: 'pointer'
         };
       case 'project':
@@ -105,7 +121,7 @@ const GanttTask = ({
   };
 
   const getProgressStyle = () => {
-    if (task.type === 'milestone') return null;
+    if (task.type === 'milestone' || task.type === 'phase') return null;
     
     const progress = task.progress || 0;
     
@@ -124,7 +140,7 @@ const GanttTask = ({
   };
 
   const getTaskText = () => {
-    if (task.type === 'milestone') return '';
+    if (task.type === 'milestone' || task.type === 'phase') return '';
     
     const textWidth = width - 20; // 패딩 및 핸들 고려
     if (textWidth < 40) return ''; // 너무 좁으면 텍스트 숨김
@@ -241,8 +257,8 @@ const GanttTask = ({
       onMouseLeave={handleMouseLeave}
       title={`${task.text} (${task.progress || 0}%)`}
     >
-      {/* 진행률 표시 (완료된 태스크와 마일스톤 제외) */}
-      {task.subType !== TaskSubType.MILESTONE && task.maturity !== MaturityType.COMPLETED && (
+      {/* 진행률 표시 (완료된 태스크와 마일스톤, Phase 제외) */}
+      {task.subType !== TaskSubType.MILESTONE && task.type !== 'phase' && task.maturity !== MaturityType.COMPLETED && (
         <div 
           className="gantt-task-progress" 
           style={getProgressStyle()}
@@ -250,8 +266,8 @@ const GanttTask = ({
         />
       )}
       
-      {/* 태스크 텍스트 (마일스톤 제외) */}
-      {task.subType !== TaskSubType.MILESTONE && (
+      {/* 태스크 텍스트 (마일스톤과 Phase 제외) */}
+      {task.subType !== TaskSubType.MILESTONE && task.type !== 'phase' && (
         <div 
           className="gantt-task-text"
           style={{

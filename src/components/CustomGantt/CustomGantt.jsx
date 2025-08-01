@@ -102,13 +102,18 @@ const CustomGantt = forwardRef(({
     return result;
   }, [tasksWithCalculatedProgress, pendingNewTaskId]);
   
-    // 플랫 태스크 목록 (렌더링용) - 성숙도 cascade 업데이트 적용
-  const flatTasks = useMemo(() => {
+    // 테이블용 플랫 태스크 목록 (일반태스크 제외) - 성숙도 cascade 업데이트 적용
+  const flatTasksForTable = useMemo(() => {
     // tasksWithCalculatedProgress에서 직접 계층 구조를 계산
     const hierarchy = buildTaskHierarchy(tasksWithCalculatedProgress);
     const expanded = flattenTaskHierarchy(hierarchy);
     
     const filtered = expanded.filter(task => {
+      // 일반태스크는 테이블에서 숨김
+      if (task.type === 'task' && task.subType !== 'milestone') {
+        return false;
+      }
+      
       // 루트 태스크(parent가 0이거나 없는 경우)는 항상 표시
       if (!task.parent || task.parent === 0) {
         return true;
@@ -141,6 +146,63 @@ const CustomGantt = forwardRef(({
     });
   }, [tasksWithCalculatedProgress, expandedTasks]); // tasksWithCalculatedProgress에 의존하여 즉시 업데이트
 
+  // 간트차트용 플랫 태스크 목록 (모든 태스크 포함, 행 위치 매핑) - 성숙도 cascade 업데이트 적용
+  const flatTasksForChart = useMemo(() => {
+    // tasksWithCalculatedProgress에서 직접 계층 구조를 계산
+    const hierarchy = buildTaskHierarchy(tasksWithCalculatedProgress);
+    const expanded = flattenTaskHierarchy(hierarchy);
+    
+    const filtered = expanded.filter(task => {
+      // 루트 태스크(parent가 0이거나 없는 경우)는 항상 표시
+      if (!task.parent || task.parent === 0) {
+        return true;
+      }
+      
+      // 부모가 접혀있으면 숨김
+      let currentParent = task.parent;
+      while (currentParent && currentParent !== 0) {
+        if (!expandedTasks.has(currentParent)) {
+          // console.log(`Task ${task.id} hidden because parent ${currentParent} is not expanded`);
+          return false;
+        }
+        // 전체 태스크 목록에서 부모의 부모를 찾기
+        const parentTask = tasksWithCalculatedProgress.find(t => t.id === currentParent);
+        currentParent = parentTask?.parent;
+        
+        // 무한 루프 방지
+        if (currentParent === task.parent) break;
+      }
+      return true;
+    });
+    
+    // 행 위치 매핑: 일반태스크는 부모 Phase와 같은 행에 표시
+    const tasksWithRowMapping = filtered.map((task, index) => {
+      const calculatedTask = tasksWithCalculatedProgress.find(t => t.id === task.id);
+      const baseTask = calculatedTask ? { ...task, maturity: calculatedTask.maturity } : task;
+      
+      // 일반태스크인 경우 부모 Phase의 행 위치를 찾기
+      if (baseTask.type === 'task' && baseTask.subType !== 'milestone') {
+        const parentTask = flatTasksForTable.find(t => t.id === baseTask.parent);
+        if (parentTask) {
+          const parentRowIndex = flatTasksForTable.indexOf(parentTask);
+          return { ...baseTask, chartRowIndex: parentRowIndex };
+        }
+      }
+      
+      // 일반태스크가 아닌 경우 테이블에서의 위치를 찾기
+      const tableTask = flatTasksForTable.find(t => t.id === baseTask.id);
+      if (tableTask) {
+        const tableRowIndex = flatTasksForTable.indexOf(tableTask);
+        return { ...baseTask, chartRowIndex: tableRowIndex };
+      }
+      
+      // 매핑되지 않은 경우 원래 인덱스 사용
+      return { ...baseTask, chartRowIndex: index };
+    });
+    
+    return tasksWithRowMapping;
+  }, [tasksWithCalculatedProgress, expandedTasks, flatTasksForTable]); // flatTasksForTable에도 의존
+
   // 태스크 배열 변경 감지 및 새 태스크 자동 선택
   useEffect(() => {
     // 태스크가 추가되었는지 확인
@@ -158,16 +220,16 @@ const CustomGantt = forwardRef(({
     setLastTaskCount(tasks.length);
   }, [tasks.length, tasks, lastTaskCount]);
 
-  // 새로 추가된 태스크가 flatTasks에 나타나면 자동 선택
+  // 새로 추가된 태스크가 flatTasksForTable에 나타나면 자동 선택
   useEffect(() => {
     if (pendingNewTaskId) {
-      const newTask = flatTasks.find(task => task.id === pendingNewTaskId);
+      const newTask = flatTasksForTable.find(task => task.id === pendingNewTaskId);
       if (newTask) {
         setSelectedTask(newTask);
         setPendingNewTaskId(null);
       }
     }
-  }, [flatTasks, pendingNewTaskId]);
+  }, [flatTasksForTable, pendingNewTaskId]);
 
   // 태스크 배열이 변경되었을 때 새로 추가된 태스크의 부모를 확장
   useEffect(() => {
@@ -277,7 +339,7 @@ const CustomGantt = forwardRef(({
 
   // 키보드 탐색 훅
   useKeyboardNavigation({
-    tasks: flatTasks,
+    tasks: flatTasksForTable,
     selectedTask,
     onTaskSelect: handleTaskSelect,
     onTaskEdit: handleTaskDoubleClick,
@@ -589,7 +651,7 @@ const CustomGantt = forwardRef(({
         <div className="gantt-task-table-header" style={{ height: `${timelineHeight}px` }}>
           <GanttTaskTable
             ref={tableRef}
-            tasks={flatTasks}
+            tasks={flatTasksForTable}
             allTasks={tasksWithCalculatedProgress}
             columns={columnsWithWidth}
             selectedTask={selectedTask}
@@ -612,7 +674,7 @@ const CustomGantt = forwardRef(({
         <div className="gantt-task-table-body">
           <GanttTaskTable
             ref={tableRef}
-            tasks={flatTasks}
+            tasks={flatTasksForTable}
             allTasks={tasksWithCalculatedProgress}
             columns={columnsWithWidth}
             selectedTask={selectedTask}
@@ -714,8 +776,8 @@ const CustomGantt = forwardRef(({
           className="gantt-timeline"
           ref={ganttTimelineRef}
           style={{
-            height: `${timelineHeight + (flatTasks.length * rowHeight)+2}px`,
-            minHeight: `${timelineHeight + (flatTasks.length * rowHeight)+2}px`,
+            height: `${timelineHeight + (flatTasksForTable.length * rowHeight)+2}px`,
+            minHeight: `${timelineHeight + (flatTasksForTable.length * rowHeight)+2}px`,
             position: 'relative'
           }}
         >
@@ -741,7 +803,7 @@ const CustomGantt = forwardRef(({
           <div 
             className="gantt-timeline-body"
             style={{
-              height: `${flatTasks.length * rowHeight+1}px`,
+              height: `${flatTasksForTable.length * rowHeight+1}px`,
               position: 'absolute',
               top: `${timelineHeight}px`,
               left: 0,
@@ -750,7 +812,7 @@ const CustomGantt = forwardRef(({
           >
             <GanttChart
               ref={chartRef}
-              tasks={flatTasks}
+              tasks={flatTasksForChart}
               timelineScale={timelineScale}
               projectStart={projectBounds.start}
               cellWidth={dynamicCellWidth}
@@ -767,6 +829,7 @@ const CustomGantt = forwardRef(({
               onConnectionDelete={onConnectionDelete}
               isConnectionMode={isConnectionMode}
               zoomLevel={zoomLevel}
+              tableRowCount={flatTasksForTable.length}
             />
             
             {/* gantt-timeline-body의 맨 오른쪽 끝 수직 라인 */}
@@ -809,6 +872,7 @@ const CustomGantt = forwardRef(({
         onDelete={handleEditModalDelete}
         taskManager={taskManager} // 태스크 관리 함수들 전달
         allTasks={tasksWithCalculatedProgress} // 전체 태스크 배열 전달 (관계 분석용)
+        onChildTaskEdit={handleTaskDoubleClick} // 하위 태스크 편집 핸들러
       />
 
       {/* 컨텍스트 메뉴 */}
